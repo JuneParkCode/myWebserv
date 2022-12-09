@@ -24,11 +24,17 @@ namespace WS
         bool empty() const; // check m_storage is null
         void clear(); // free m_storage
         Storage operator+(const std::string& str);
+        Storage& operator+=(const std::string& str);
         Storage operator+(CString str);
+        Storage& operator+=(CString str);
         Storage operator+(const Storage& str);
+        Storage& operator+=(const Storage& str);
         Storage operator+(ssize_t n);
+        Storage& operator+=(ssize_t n);
         Storage operator+(size_t n);
+        Storage& operator+=(size_t n);
         Storage operator+(double n);
+        Storage& operator+=(double n);
         Storage& operator=(const Storage& rhs);
         Storage& operator=(const std::string& rhs);
         Storage& operator=(CString rhs);

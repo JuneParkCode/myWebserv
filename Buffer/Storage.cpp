@@ -131,6 +131,42 @@ WS::Storage WS::Storage::operator+(double n)
   return (*this + std::to_string(n));
 }
 
+WS::Storage& WS::Storage::operator+=(const std::string& str)
+{
+  *this = *this + str;
+  return (*this);
+}
+
+WS::Storage& WS::Storage::operator+=(WS::CString str)
+{
+  *this = *this + str;
+  return (*this);
+}
+
+WS::Storage& WS::Storage::operator+=(const WS::Storage& str)
+{
+  *this = *this + str;
+  return (*this);
+}
+
+WS::Storage& WS::Storage::operator+=(ssize_t n)
+{
+  *this = *this + n;
+  return (*this);
+}
+
+WS::Storage& WS::Storage::operator+=(size_t n)
+{
+  *this = *this + n;
+  return (*this);
+}
+
+WS::Storage& WS::Storage::operator+=(double n)
+{
+  *this = *this + n;
+  return (*this);
+}
+
 WS::Storage& WS::Storage::operator=(const WS::Storage& rhs)
 {
   if (&rhs == this)
@@ -184,6 +220,7 @@ WS::Storage::~Storage()
 {
   clear();
 }
+
 
 std::ostream& operator<<(std::ostream& stream, const WS::Storage& buf)
 {
