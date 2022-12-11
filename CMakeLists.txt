@@ -8,8 +8,11 @@ set(CMAKE_CXX_STANDARD 11)
 #add_link_options(-g3 -fsanitize=address)
 
 set(SOURCE_FILES
-        Buffer/Storage.cpp
-        HTTP/Request.cpp)
+        Storage/Storage.cpp
+        HTTP/Request.cpp
+        HTTP/Response.cpp
+        Server/Connection.cpp
+        ThreadPool/ThreadPool.cpp)
 
 add_executable(miniWebserv
         ${SOURCE_FILES}
@@ -17,6 +20,9 @@ add_executable(miniWebserv
 
 target_include_directories(miniWebserv
         PUBLIC
-        Buffer
+        Event
         HTTP
+        Storage
+        Server
+        ThreadPool
         )
