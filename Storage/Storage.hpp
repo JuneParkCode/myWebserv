@@ -1,6 +1,10 @@
 #ifndef STORAGE_HPP
 #define STORAGE_HPP
 
+// STORAGE
+// std::string의 경우 binary format의 데이터를 못받는 문제가 있다.
+// 이런 문제를 해결하고자, std::string 처럼 heap 을 이용하며 자유롭게 사용할 수 있는 구조를 만듦.
+
 #include <string>
 #include <ostream>
 
@@ -22,21 +26,22 @@ namespace WS
         Storage subStorage(size_t start, size_t len) const;
         void pop(size_t len); // pop storage[0] to storage[len - 1];
         void reserve(size_t size);
+        const Byte* data() const;
         size_t size() const;
         void append(Byte* buf, size_t size);
         bool empty() const;
         void clear(); // free m_storage
         Storage operator+(const std::string& str);
-        Storage& operator+=(const std::string& str);
         Storage operator+(CString str);
-        Storage& operator+=(CString str);
         Storage operator+(const Storage& str);
-        Storage& operator+=(const Storage& str);
         Storage operator+(ssize_t n);
-        Storage& operator+=(ssize_t n);
         Storage operator+(size_t n);
-        Storage& operator+=(size_t n);
         Storage operator+(double n);
+        Storage& operator+=(const std::string& str);
+        Storage& operator+=(CString str);
+        Storage& operator+=(const Storage& str);
+        Storage& operator+=(ssize_t n);
+        Storage& operator+=(size_t n);
         Storage& operator+=(double n);
         Storage& operator=(const Storage& rhs);
         Storage& operator=(const std::string& rhs);

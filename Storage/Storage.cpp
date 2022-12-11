@@ -260,6 +260,11 @@ void WS::Storage::reserve(size_t size)
   }
 }
 
+const WS::Byte* WS::Storage::data() const
+{
+  return (m_storage);
+}
+
 std::ostream& operator<<(std::ostream& stream, const WS::Storage& buf)
 {
   const size_t BUF_SIZE = buf.size();
