@@ -6,7 +6,7 @@
 
 namespace WS
 {
-    typedef unsigned int Byte;
+    typedef unsigned char Byte;
     typedef const char* CString;
     class Storage
     {
@@ -15,13 +15,16 @@ namespace WS
         size_t m_storedSize;
         size_t m_storageSize;
     public:
-        Byte* find(Byte needle) const;
-        size_t findPos(Byte needle) const;
-        Byte* rfind(Byte needle) const;
-        size_t rfindPos(Byte needle) const;
+        size_t find(Byte needle) const;
+        size_t find(const std::string& needle) const;
+        size_t rfind(Byte needle) const;
+        size_t rfind(const std::string& needle) const;
+        Storage subStorage(size_t start, size_t len) const;
+        void pop(size_t len); // pop storage[0] to storage[len - 1];
+        void reserve(size_t size);
         size_t size() const;
         void append(Byte* buf, size_t size);
-        bool empty() const; // check m_storage is null
+        bool empty() const;
         void clear(); // free m_storage
         Storage operator+(const std::string& str);
         Storage& operator+=(const std::string& str);
