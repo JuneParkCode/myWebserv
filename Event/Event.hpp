@@ -21,8 +21,6 @@ namespace WS
         Connection* connection;
         Event(EventType type_, Connection* connection_): type(type_), connection(connection_){};
     } Event;
-
-    void handleEvent(const Event& event);
 }
 
 #endif //EVENT_HPP
