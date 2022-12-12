@@ -26,12 +26,11 @@ namespace WS
       WS::Storage m_readFileStorage;
       WS::Storage m_writeFileStorage;
       size_t m_threadNO;
-      Server& m_server;
   public:
       void parseRequestFromStorage();
       void setThreadNO(size_t thredNO);
+      void setSocketFD(FileDescriptor fd);
       void closeConnection(); // close connection and delete jobs from thread Queue
-      void attachEvent(struct kevent& event) const;
       size_t getThreadNO() const;
       HTTP::Request& getRequest() const;
       WS::Storage& getReceiveStorage() const;
