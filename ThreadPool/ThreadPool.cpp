@@ -13,7 +13,7 @@ void WS::ThreadPool::enqueueJob(const struct kevent& ev)
 
   auto event = reinterpret_cast<Event*>(ev.udata);
   const size_t THREAD_NO = event->connection->getThreadNO();
-  if (THREAD_NO == 0)
+  if (event->type == EV_TYPE_ACCEPT_CONNECTION)
   {
     m_jobQueue.push(ev);
     m_cvJobQueue.notify_all();
@@ -66,7 +66,7 @@ void WS::ThreadPool::work(const size_t THREAD_NO)
       lock.unlock();
 
       auto event = reinterpret_cast<Event*>(newEV.udata);
-      event->connection->setThreadNO(THREAD_NO);
+      event->threadNO = THREAD_NO;
       WS::handleEvent(newEV);
     }
     else if (!threadJobQueue.empty())

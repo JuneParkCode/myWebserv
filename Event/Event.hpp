@@ -6,6 +6,8 @@
 #define EVENT_HPP
 
 #include "Connection.hpp"
+#include <netinet/in.h>
+
 namespace WS
 {
     enum EventType
@@ -13,12 +15,15 @@ namespace WS
         EV_TYPE_READ_FILE,
         EV_TYPE_WRITE_FILE,
         EV_TYPE_RECEIVE_SOCKET,
-        EV_TYPE_SEND_SOCKET
+        EV_TYPE_SEND_SOCKET,
+        EV_TYPE_ACCEPT_CONNECTION
     };
     typedef struct Event
     {
         EventType type;
         Connection* connection;
+        struct sockaddr_in addr;
+        size_t threadNO;
         Event(EventType type_, Connection* connection_): type(type_), connection(connection_){};
     } Event;
 }
