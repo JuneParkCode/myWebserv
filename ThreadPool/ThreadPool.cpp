@@ -3,13 +3,16 @@
 //
 
 #include "ThreadPool.hpp"
+#include "Handlers.hpp"
 
-void WS::ThreadPool::enqueueJob(const WS::Event& ev)
+void WS::ThreadPool::enqueueJob(const struct kevent& ev)
 {
   if (stop)
     throw (std::runtime_error("thread stopped\n"));
   std::lock_guard<std::mutex> lock(m_jobQueueMutex);
-  const size_t THREAD_NO = ev.connection->getThreadNO();
+
+  auto event = reinterpret_cast<Event*>(ev.udata);
+  const size_t THREAD_NO = event->connection->getThreadNO();
   if (THREAD_NO == 0)
   {
     m_jobQueue.push(ev);
@@ -45,7 +48,7 @@ WS::ThreadPool::ThreadPool(const size_t numThreads) :
 void WS::ThreadPool::work(const size_t THREAD_NO)
 {
   //set own queue
-  std::queue<Event> threadJobQueue;
+  std::queue<struct kevent> threadJobQueue;
   std::unique_lock<std::mutex> tqLock(m_jobQueueMutex);
   this->m_threadJobQueues.push_back(&threadJobQueue);
   tqLock.unlock();
@@ -58,20 +61,21 @@ void WS::ThreadPool::work(const size_t THREAD_NO)
       return ;
     else if (!this->m_jobQueue.empty())
     {
-      const Event& newEV = m_jobQueue.front();
+      auto newEV = m_jobQueue.front();
       m_jobQueue.pop();
       lock.unlock();
 
-      newEV.connection->setThreadNO(THREAD_NO);
-      handleEvent(newEV);
+      auto event = reinterpret_cast<Event*>(newEV.udata);
+      event->connection->setThreadNO(THREAD_NO);
+      WS::handleEvent(newEV);
     }
     else if (!threadJobQueue.empty())
     {
-      const Event& newEV = threadJobQueue.front();
+      auto newEV = threadJobQueue.front();
       threadJobQueue.pop();
       lock.unlock();
-      
-      handleEvent(newEV);
+
+      WS::handleEvent(newEV);
     }
   }
 }
