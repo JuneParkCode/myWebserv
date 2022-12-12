@@ -230,7 +230,7 @@ WS::Storage WS::Storage::subStorage(size_t start, size_t len) const
 
 void WS::Storage::pop(size_t len)
 {
-  if (m_storedSize == 0 || m_storageSize == 0)
+  if (m_storedSize == 0 || m_storageSize == 0 || len == 0)
     return ;
   if (m_storedSize <= len)
   {
