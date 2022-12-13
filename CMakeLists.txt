@@ -13,6 +13,7 @@ set(SOURCE_FILES
         HTTP/Response.cpp
         Server/Connection.cpp
         Server/Handlers.cpp
+        Server/Location.cpp
         Server/Server.cpp
         Server/VirtualServer.cpp
         ThreadPool/ThreadPool.cpp)
