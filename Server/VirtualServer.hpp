@@ -5,6 +5,7 @@
 #ifndef VIRTUAL_SERVER_HPP
 #define VIRTUAL_SERVER_HPP
 
+#include "Event.hpp"
 #include "Location.hpp"
 #include <string>
 
@@ -17,7 +18,13 @@ namespace WS
     std::string m_listenIP;
     std::string m_listenPort;
     std::vector<Location> m_locations;
+    Event m_listenEvent;
+    int m_serverFD;
   public:
+    int getServerFd() const;
+    void setServerFd(int mServerFd);
+    Event& getListenEvent();
+    void setListenEvent(const Event& mListenEvent);
     const std::string& getServerName() const;
     void setServerName(const std::string& serverName);
     const std::string& getListenIp() const;
@@ -26,9 +33,11 @@ namespace WS
     void setListenPort(const std::string& listenPort);
     const std::vector<Location>& getLocations() const;
     void setLocations(const std::vector<Location>& locations);
+    void listen();
+
   public:
-    VirtualServer(const std::string& serverName, const std::string& listenIP, const std::string& listenPort, const std::vector<Location>& m_locations);
-    ~VirtualServer();
+    ~VirtualServer() = default;
+    VirtualServer(std::string  mServerName, std::string  mListenIp, std::string  mListenPort, std::vector<Location>  mLocations);
   };
 }
 

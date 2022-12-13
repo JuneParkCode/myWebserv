@@ -22,7 +22,7 @@ namespace WS
     void attachEvent(struct kevent& event);
     void run();
     Server();
-    ~Server();
+    ~Server() = default;
   };
 }
 
