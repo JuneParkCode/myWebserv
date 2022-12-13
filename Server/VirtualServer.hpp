@@ -9,6 +9,8 @@
 #include "Location.hpp"
 #include <string>
 
+#define BACKLOG 1024
+
 namespace WS
 {
   class VirtualServer

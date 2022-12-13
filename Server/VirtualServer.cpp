@@ -92,7 +92,7 @@ void WS::VirtualServer::listen()
   {
     throw (std::runtime_error("Bind Socket failed\n"));
   }
-  if (::listen(this->m_serverFD, 1024) < 0)
+  if (::listen(this->m_serverFD, BACKLOG) < 0)
   {
     throw (std::runtime_error("Listen Socket failed\n"));
   }
