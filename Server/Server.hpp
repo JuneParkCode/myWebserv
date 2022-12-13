@@ -18,6 +18,7 @@ namespace WS
   private:
     FileDescriptor m_kqueue;
     std::vector<VirtualServer> m_virtualServers;
+    void listenVirtualServers();
   public:
     void attachEvent(struct kevent& event);
     void run();

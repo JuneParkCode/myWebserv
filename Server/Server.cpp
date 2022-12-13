@@ -18,9 +18,8 @@ void WS::Server::attachEvent(struct kevent& event)
   }
 }
 
-void WS::Server::run()
+void WS::Server::listenVirtualServers()
 {
-  // listen ports
   for (auto& vServer : m_virtualServers)
   {
     vServer.listen();
@@ -30,10 +29,25 @@ void WS::Server::run()
     EV_SET(&ev, vServer.getServerFd(), EVFILT_READ, EV_ADD, 0, 0, &vServer.getListenEvent());
     attachEvent(ev);
   }
+}
 
+
+void WS::Server::run()
+{
+  // listen ports
+  try
+  {
+    listenVirtualServers();
+  }
+  catch (std::exception& e)
+  {
+    std::cerr << e.what();
+    return ;
+  }
+  G_SERVER = this;
   ThreadPool pool(NUM_THREADS_DEF);
   struct kevent event;
-  G_SERVER = this;
+
   while (true)
   {
     // 서버 시작. 새 이벤트(Req)가 발생할 때 까지 무한루프. (감지하는 kevent)
