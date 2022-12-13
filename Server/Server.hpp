@@ -20,7 +20,7 @@ namespace WS
     std::vector<VirtualServer> m_virtualServers;
     void listenVirtualServers();
   public:
-    void attachEvent(struct kevent& event);
+    void attachEvent(struct kevent& event) const;
     void run();
     Server();
     ~Server() = default;
