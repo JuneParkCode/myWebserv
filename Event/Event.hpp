@@ -21,9 +21,9 @@ namespace WS
     typedef struct Event
     {
         EventType type;
-        Connection* connection;
-        struct sockaddr_in addr;
+        WS::Connection* connection;
         size_t threadNO;
+        Event() = default;
         Event(EventType type_, Connection* connection_): type(type_), connection(connection_){};
     } Event;
 }

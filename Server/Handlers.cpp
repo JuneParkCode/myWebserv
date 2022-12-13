@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <Server.hpp>
 
 extern WS::Server* G_SERVER;
 
@@ -82,7 +83,7 @@ void WS::handleEvent(struct kevent& event)
     }
   }
   // enable event
-  event.flags = event.flags | EV_ENABLE;
+  event.flags = EV_ADD;
   G_SERVER->attachEvent(event);
 }
 

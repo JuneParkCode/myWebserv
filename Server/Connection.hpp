@@ -8,7 +8,6 @@
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
 #include "Request.hpp"
-#include "Server.hpp"
 #include <queue>
 
 // HTTP 1.1 은 기본적으로 Pipelining 을 지원해야하지만, 실제로는 그렇지 않은 서버가 많다.

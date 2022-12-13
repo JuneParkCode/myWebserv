@@ -12,6 +12,8 @@
 #include <condition_variable>
 #include <sys/event.h>
 
+#define NUM_THREADS_DEF 12
+
 namespace WS
 {
   class ThreadPool
