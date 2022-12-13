@@ -64,13 +64,29 @@ void WS::Location::setClientMaxBodySize(size_t mClientMaxBodySize)
   m_clientMaxBodySize = mClientMaxBodySize;
 }
 
-WS::Location::Location()
-{
-}
-
-WS::Location::~Location()
-{
-}
-
 WS::Location& WS::Location::operator=(const WS::Location& loc)
 = default;
+
+WS::Location::Location()
+= default;
+
+WS::Location::~Location()
+= default;
+
+std::string WS::Location::getFilePath(const std::string& url) const
+{
+  if (!isValidLocationURL(url))
+    throw (std::runtime_error("URL is invalid on Location\n"));
+  std::string path = m_path + url.substr(url.find(m_path) + 1);
+
+  return (path);
+}
+
+bool WS::Location::isValidLocationURL(const std::string& url) const
+{
+  std::string loc = url.substr(0, url.rfind('/') + 1); // URL : /content/loc/a.php -> res : /content/loc/
+
+  if (loc != m_path)
+    loc = url;
+  return (loc == m_path);
+}

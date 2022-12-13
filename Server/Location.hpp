@@ -14,12 +14,13 @@ namespace WS
   class Location
   {
   private:
+      std::string m_path;
       std::vector<std::string> m_allowMethods;
       std::string m_root;
       std::vector<std::string> m_index;
       std::vector<std::string> m_allowCGI;
-      bool m_autoIndex;
-      size_t m_clientMaxBodySize;
+      bool m_autoIndex{};
+      size_t m_clientMaxBodySize{};
   public:
       const std::vector<std::string>& getAllowMethods() const;
       void setAllowMethods(const std::vector<std::string>& allowMethods);
@@ -33,6 +34,8 @@ namespace WS
       void setAutoIndex(bool autoIndex);
       size_t getClientMaxBodySize() const;
       void setClientMaxBodySize(size_t clientMaxBodySize);
+      std::string getFilePath(const std::string& url) const;
+      bool isValidLocationURL(const std::string& url) const;
   public:
       Location();
       ~Location();
