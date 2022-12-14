@@ -20,12 +20,16 @@ void WS::Connection::closeConnection()
 {
   if (!m_closed)
   {
-    std::cerr << "connection closed\n";
-    ::close(m_socketFD);
-    ::close(m_readFD);
-    ::close(m_writeFD);
     m_closed = true;
+    if (m_socketFD > 0)
+      ::close(m_socketFD);
+    if (m_readFD > 0)
+      ::close(m_readFD);
+    if (m_writeFD > 0)
+      ::close(m_writeFD);
+    delete (m_request);
     ::free (this);
+    std::cerr << "connection closed\n";
   }
 }
 
@@ -59,9 +63,9 @@ std::string WS::Connection::getClientIP() const
   return {str};
 }
 
-WS::Connection::Connection() : m_socketFD(-1), m_readFD(-1), m_writeFD(-1), m_closed(false)
+WS::Connection::Connection() :
+  m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false)
 {
-
 }
 
 WS::Connection::~Connection()

@@ -29,7 +29,7 @@ namespace WS
       WS::Storage m_writeFileStorage;
       bool m_closed;
   public:
-      struct sockaddr_in m_socketIn;
+      struct sockaddr_in m_socketIn{};
   public:
       void parseRequestFromStorage();
       void setSocketFD(FileDescriptor fd);
