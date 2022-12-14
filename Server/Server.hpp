@@ -5,7 +5,9 @@
 #ifndef SERVER_HPP
 #define SERVER_HPP
 
+#include "Job.hpp"
 #include "VirtualServer.hpp"
+#include "ThreadPool.hpp"
 #include <sys/event.h>
 #include <vector>
 
@@ -18,10 +20,14 @@ namespace WS
   private:
     FileDescriptor m_kqueue;
     std::vector<VirtualServer> m_virtualServers;
+    ThreadPool m_threadPool;
+  private:
     void listenVirtualServers();
   public:
     void attachEvent(struct kevent& event) const;
-    void run();
+    void attachEvent(ssize_t ident, size_t filter, size_t flags, size_t fflags, void* udata) const;
+    void attachNewJob(const Job& job);
+      [[noreturn]] void run();
     Server();
     ~Server() = default;
   };

@@ -17,6 +17,19 @@ void WS::Server::attachEvent(struct kevent& event) const
   }
 }
 
+void WS::Server::attachEvent(ssize_t ident, size_t filter, size_t flags, size_t fflags, void* udata) const
+{
+  struct kevent ev;
+  EV_SET(&ev, ident, filter, flags, fflags, 0, udata);
+
+  if (kevent(m_kqueue, &ev, 1, nullptr, 0, nullptr) < 0)
+  {
+    std::cerr << "event attach failed\n";
+    std::cerr << ::strerror(errno);
+    // 별도의 처리가 필요?
+  }
+}
+
 void WS::Server::listenVirtualServers()
 {
   for (auto& vServer : m_virtualServers)
@@ -24,14 +37,11 @@ void WS::Server::listenVirtualServers()
     vServer.listen();
     vServer.setListenEvent(Event(EV_TYPE_ACCEPT_CONNECTION, nullptr));
 
-    struct kevent ev;
-    EV_SET(&ev, vServer.getServerFd(), EVFILT_READ, EV_ADD, 0, 0, &vServer.getListenEvent());
-    attachEvent(ev);
+    attachEvent(vServer.getServerFd(), EVFILT_READ, EV_ADD, 0, &vServer.getListenEvent());
   }
 }
 
-
-void WS::Server::run()
+[[noreturn]] void WS::Server::run()
 {
   m_kqueue = kqueue();
   // listen ports
@@ -44,19 +54,17 @@ void WS::Server::run()
     std::cerr << e.what();
     return ;
   }
-  ThreadPool pool(NUM_THREADS_DEF);
   struct kevent event;
 
   while (true)
   {
     // 서버 시작. 새 이벤트(Req)가 발생할 때 까지 무한루프. (감지하는 kevent)
-    int newEventCount = kevent(m_kqueue, nullptr, 0, &event, 1, nullptr);
+    int newEventCount = ::kevent(m_kqueue, nullptr, 0, &event, 1, nullptr);
 
     if (newEventCount > 0)
     {
-      pool.enqueueIOJob(event);
-      event.flags = EV_ADD | EV_DISABLE; // 한번에 하나 처리해야하므로 핸들링 이전까지 재워둠.
-      attachEvent(event);
+      m_threadPool.enqueueIOJob(event);
+      attachEvent(event.ident, event.filter, EV_DISABLE, event.fflags, event.udata);
     }
     else if (newEventCount == 0) // timeout in kq
     {
@@ -69,7 +77,8 @@ void WS::Server::run()
   }
 }
 
-WS::Server::Server()
+WS::Server::Server():
+        m_threadPool(20)
 {
   // parse config file and set virtual servers
 
@@ -88,4 +97,9 @@ WS::Server::Server()
   loc.setAllowCGI(tmp);
   std::vector<Location> locs;
   m_virtualServers.emplace_back("webserv", "0.0.0.0", "42424", locs);
+}
+
+void WS::Server::attachNewJob(const WS::Job& job)
+{
+  m_threadPool.enqueueNormalJob(job);
 }
