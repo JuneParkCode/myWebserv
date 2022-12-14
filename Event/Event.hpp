@@ -5,11 +5,11 @@
 #ifndef EVENT_HPP
 #define EVENT_HPP
 
-#include "Connection.hpp"
 #include <netinet/in.h>
 
 namespace WS
 {
+    class Connection;
     enum EventType
     {
         EV_TYPE_READ_FILE,
@@ -23,7 +23,7 @@ namespace WS
         EventType type;
         WS::Connection* connection;
         Event() = default;
-        Event(EventType type_, Connection* connection_): type(type_), connection(connection_){};
+        Event(EventType type_, Connection* connection_);
     } Event;
 }
 

@@ -8,6 +8,7 @@
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
 #include "ARequest.hpp"
+#include "Event.hpp"
 #include <queue>
 #include <netinet/in.h>
 
@@ -24,22 +25,26 @@ namespace WS
       FileDescriptor m_readFD;
       FileDescriptor m_writeFD;
       WS::ARequest* m_request;
-      WS::Storage m_receiveStorage;
-      WS::Storage m_sendStorage;
-      WS::Storage m_readFileStorage;
-      WS::Storage m_writeFileStorage;
+      WS::Storage m_socketRecvStorage;
+      WS::Storage m_socketSendStorage;
+      WS::Storage m_fileReadStorage;
+      WS::Storage m_fileWriteStorage;
       bool m_closed;
   public:
       struct sockaddr_in m_socketIn{};
+      Event m_socketRecvEvent;
+      Event m_socketSendEvent;
+      Event m_fileReadEvent;
+      Event m_fileWriteEvent;
   public:
       void parseRequestFromStorage();
       void setSocketFD(FileDescriptor fd);
       void closeConnection(); // close connection and delete jobs from thread Queue
       ARequest* getRequest();
-      WS::Storage& getReceiveStorage();
-      WS::Storage& getSendStorage();
-      WS::Storage& getReadFileStorage();
-      WS::Storage& getWriteFileStorage();
+      WS::Storage& getSocketReceiveStorage();
+      WS::Storage& getSocketSendStorage();
+      WS::Storage& getFileReadStorage();
+      WS::Storage& getFileWriteStorage();
       std::string getClientIP() const;
       FileDescriptor getSocketFd() const;
       void setSocketFd(FileDescriptor socketFd);

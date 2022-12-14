@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD 11)
 #add_link_options(-g3 -fsanitize=address)
 
 set(SOURCE_FILES
+        Event/Event.cpp
         Storage/Storage.cpp
         HTTP/Request.cpp
         HTTP/Response.cpp
