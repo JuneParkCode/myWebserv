@@ -9,7 +9,6 @@
 
 void WS::Connection::parseRequestFromStorage()
 {
-
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)
@@ -53,6 +52,11 @@ WS::Storage& WS::Connection::getReceiveStorage()
   return (m_receiveStorage);
 }
 
+WS::Storage& WS::Connection::getSendStorage()
+{
+  return (m_sendStorage);
+}
+
 WS::Storage& WS::Connection::getReadFileStorage()
 {
   return (m_readFileStorage);
@@ -62,6 +66,7 @@ WS::Storage& WS::Connection::getWriteFileStorage()
 {
   return (m_writeFileStorage);
 }
+
 
 std::string WS::Connection::getClientIP() const
 {

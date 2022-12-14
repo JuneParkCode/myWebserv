@@ -25,6 +25,7 @@ namespace WS
       FileDescriptor m_writeFD;
       WS::ARequest* m_request;
       WS::Storage m_receiveStorage;
+      WS::Storage m_sendStorage;
       WS::Storage m_readFileStorage;
       WS::Storage m_writeFileStorage;
       bool m_closed;
@@ -36,6 +37,7 @@ namespace WS
       void closeConnection(); // close connection and delete jobs from thread Queue
       ARequest* getRequest();
       WS::Storage& getReceiveStorage();
+      WS::Storage& getSendStorage();
       WS::Storage& getReadFileStorage();
       WS::Storage& getWriteFileStorage();
       std::string getClientIP() const;
