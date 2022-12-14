@@ -4,10 +4,9 @@
 #include <fcntl.h>
 #include <Server.hpp>
 
-extern WS::Server* G_SERVER;
-
 #define BUFFER_SIZE (16 * 1024)
 
+extern WS::Server* G_SERVER;
 /*
  * after EV_EOF, jobs must be deleted.... -> multi-threading 으로 오는 부작용
  * Solution 01 : use kqueue per thread            -> 이번 webser v에서 활용한 바 있음. kqueue 를 여러번 만드는 것이 조금 꺼림직 하다.
@@ -25,7 +24,6 @@ void WS::handleEvent(struct kevent& event)
   if (event.flags & EV_ERROR) // EV_ERROR -> disconnect connection...
   {
     ev->connection->closeConnection();
-    delete (ev->connection);
     delete (ev);
     return ;
   }
@@ -57,7 +55,6 @@ void WS::handleEvent(struct kevent& event)
       if (event.flags & EV_EOF) // connection closed
       {
         ev->connection->closeConnection();
-        delete (ev->connection);
         delete (ev);
         return ;
       }
@@ -69,7 +66,6 @@ void WS::handleEvent(struct kevent& event)
       if (event.flags & EV_EOF) // connection closed
       {
         ev->connection->closeConnection();
-        delete (ev->connection);
         delete (ev);
         return ;
       }
@@ -161,7 +157,7 @@ void WS::handleFileWrite(struct kevent& event)
 void WS::handleAcceptConnection(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  FileDescriptor newSocket = accept((FileDescriptor)event.ident, reinterpret_cast<sockaddr*>(&ev->addr), nullptr);
+  FileDescriptor newSocket = accept((FileDescriptor)event.ident, reinterpret_cast<sockaddr*>(&ev->connection->m_socketIn), nullptr);
 
   if (newSocket < 0)
     return ;
@@ -180,6 +176,6 @@ void WS::handleAcceptConnection(struct kevent& event)
     {
       throw (std::runtime_error("Socket opt failed\n"));
     }
-    std::cerr << "Connect\n"; // 추후 변경
+    std::cerr << "Connect : " << ev->connection->getClientIP() << std::endl; // log
   }
 }
