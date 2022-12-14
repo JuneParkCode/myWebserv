@@ -1,7 +1,7 @@
 #include "Handlers.hpp"
 #include "Server.hpp"
 #include "Job.hpp"
-함#include "Connection.hpp"
+#include "Connection.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -33,7 +33,7 @@ void WS::handleEvent(struct kevent& event)
         return ;
       }
       handleFileRead(event);
-      break ;
+      return ;
     }
     case EV_TYPE_WRITE_FILE:
     {
@@ -42,7 +42,7 @@ void WS::handleEvent(struct kevent& event)
         return ;
       }
       handleFileWrite(event);
-      break ;
+      return ;
     }
     case EV_TYPE_RECEIVE_SOCKET:
     {
@@ -103,16 +103,38 @@ void WS::handleSocketReceive(struct kevent& event)
 void WS::handleSocketSend(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto& buffer = ev->connection->getReadFileStorage();
-  auto sendSize = ::send((FileDescriptor)event.ident, buffer.data(), buffer.size(), MSG_DONTWAIT);
-  // FIXME: buffer.empty() || !buffer -> ERROR?
+  auto& buffer = ev->connection->getSocketSendStorage();
+  const size_t bufferCursor = buffer.getCursor();
+  const size_t BUF_SIZE = (buffer.size() - bufferCursor);
+
+  auto sendSize = ::send((FileDescriptor)event.ident, &buffer.data()[bufferCursor], BUF_SIZE, MSG_DONTWAIT);
   if (sendSize == -1)
   {
     delete (ev->connection);
   }
   else
   {
-    buffer.pop(sendSize);
+    if (buffer.size() <= bufferCursor + sendSize) // buffer send done
+    {
+      buffer.clear();
+      // check if response is done -> readFileFD == -1  (no more read file and no more send..)
+      if (ev->connection->getReadFd() < 0)
+      {
+        // enable socket recv
+        G_SERVER->attachEvent(ev->connection->getSocketFd(), event.filter, EV_ADD, event.fflags, &ev->connection->m_socketRecvEvent);
+      }
+      else
+      {
+        // read more..
+        G_SERVER->attachEvent(ev->connection->getReadFd(), event.filter, EV_ADD, event.fflags, &ev->connection->m_fileReadEvent);
+      }
+    }
+    else // partial send...
+    {
+      buffer.setCursor(bufferCursor + sendSize);
+      // send more..
+      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD, event.fflags, &ev->connection->m_socketSendEvent);
+    }
   }
 }
 
