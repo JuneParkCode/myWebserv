@@ -83,14 +83,13 @@ void WS::handleSocketReceive(struct kevent& event)
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
 
-  auto readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
+  auto readSize = receiveBuffer.read(event.ident);
   if (readSize == -1)
   {
     delete (ev->connection);
   }
   else
   {
-    connection.getSocketReceiveStorage().append(buffer, readSize);
     auto jobHandler = [&connection](){
       connection.parseRequestFromStorage();
     };
@@ -145,14 +144,14 @@ void WS::handleFileRead(struct kevent& event)
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& readBuffer = ev->connection->getFileReadStorage();
 
-  ssize_t readSize = ::read((FileDescriptor)event.ident, buffer, sizeof(buffer));
+  auto readSize = readBuffer.read(event.ident);
   if (readSize == -1)
   {
     delete (ev->connection);
   }
   else
   {
-    readBuffer.append(buffer, readSize);
+
   }
 }
 
