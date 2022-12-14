@@ -87,17 +87,21 @@ void WS::handleSocketReceive(struct kevent& event)
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
   auto& receiveBuffer = ev->connection->getReceiveStorage();
+  auto& connection = *ev->connection;
 
   if (readSize == -1)
   {
-    std::cerr << "close connection\n";
     delete (ev->connection);
   }
   else
   {
-    ev->connection->getReceiveStorage().append(buffer, readSize);
-    Connection& connection = *ev->connection;
-    WS::Job job([&connection](){connection.parseRequestFromStorage();});
+    connection.getReceiveStorage().append(buffer, readSize);
+    auto jobHandler = [&connection](){
+      std::unique_lock<std::mutex> lock(connection.getLock());
+      connection.parseRequestFromStorage();
+      lock.unlock();
+    };
+    WS::Job job(jobHandler);
     G_SERVER->attachNewJob(job);
   }
 }

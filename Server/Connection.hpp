@@ -10,6 +10,7 @@
 #include "ARequest.hpp"
 #include <queue>
 #include <netinet/in.h>
+#include <mutex>
 
 // HTTP 1.1 은 기본적으로 Pipelining 을 지원해야하지만, 실제로는 그렇지 않은 서버가 많다.
 // 해당 서버도 Pipelining을 지원하지 않을 것이다.
@@ -27,6 +28,7 @@ namespace WS
       WS::Storage m_receiveStorage;
       WS::Storage m_readFileStorage;
       WS::Storage m_writeFileStorage;
+      std::mutex m_connectionMutex;
       bool m_closed;
   public:
       struct sockaddr_in m_socketIn{};
@@ -45,6 +47,7 @@ namespace WS
       void setReadFd(FileDescriptor readFd);
       FileDescriptor getWriteFd() const;
       void setWriteFd(FileDescriptor writeFd);
+      std::mutex& getLock();
       Connection();
       ~Connection();
   };

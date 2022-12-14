@@ -18,6 +18,7 @@ void WS::Connection::setSocketFD(FileDescriptor fd)
 
 void WS::Connection::closeConnection()
 {
+  std::unique_lock<std::mutex> lock(m_connectionMutex);
   if (!m_closed)
   {
     m_closed = true;
@@ -40,6 +41,7 @@ void WS::Connection::closeConnection()
     m_request = nullptr;
     std::cerr << "connection closed\n";
   }
+  lock.unlock();
 }
 
 WS::ARequest* WS::Connection::getRequest()
@@ -110,4 +112,9 @@ FileDescriptor WS::Connection::getWriteFd() const
 void WS::Connection::setWriteFd(FileDescriptor writeFd)
 {
   m_writeFD = writeFd;
+}
+
+std::mutex& WS::Connection::getLock()
+{
+  return (m_connectionMutex);
 }
