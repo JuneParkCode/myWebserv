@@ -48,6 +48,8 @@ namespace WS
         Storage& operator=(CString rhs);
         Byte& operator[](size_t pos) const;
         Storage();
+        Storage(const Storage& storage);
+        Storage(Storage&& storage) noexcept ;
         ~Storage();
         // static
         static const size_t NOT_FOUND = SIZE_T_MAX;

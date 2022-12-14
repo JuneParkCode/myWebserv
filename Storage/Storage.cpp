@@ -1,9 +1,25 @@
 #include "Storage.hpp"
 
+// storage move constructor
+WS::Storage::Storage(WS::Storage&& storage) noexcept:
+        m_storage(storage.m_storage),
+        m_storageSize(storage.m_storageSize),
+        m_storedSize(storage.m_storedSize)
+{
+  storage.m_storage = nullptr;
+  storage.m_storedSize = 0;
+  storage.m_storageSize = 0;
+}
+
+WS::Storage::Storage(const WS::Storage& storage)
+{
+  *this = storage;
+}
+
 WS::Storage::Storage():
-        m_storage(new WS::Byte[100]),
+        m_storage(nullptr),
         m_storedSize(0),
-        m_storageSize(100)
+        m_storageSize(0)
 {
 }
 
