@@ -52,7 +52,6 @@ void WS::handleEvent(struct kevent& event)
         return ;
       }
       handleSocketReceive(event);
-      // receive 의 경우 request 가 모두 종료되고 난 이후에 다시 받을 수 있도록 함..
       return ;
     }
     case EV_TYPE_SEND_SOCKET:
@@ -78,7 +77,6 @@ void WS::handleEvent(struct kevent& event)
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
-  unsigned char buffer[BUFFER_SIZE];
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
@@ -140,7 +138,6 @@ void WS::handleSocketSend(struct kevent& event)
 // read data from file and store in response send buffer
 void WS::handleFileRead(struct kevent& event)
 {
-  unsigned char buffer[BUFFER_SIZE];
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& readBuffer = ev->connection->getFileReadStorage();
 
