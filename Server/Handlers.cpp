@@ -1,5 +1,6 @@
 #include "Handlers.hpp"
 #include "Server.hpp"
+#include "Job.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -23,6 +24,7 @@ void WS::handleEvent(struct kevent& event)
 
   if (event.flags & EV_ERROR) // EV_ERROR -> disconnect connection...
   {
+    std::cerr << "EV_ERR\n";
     ev->connection->closeConnection();
     delete (ev);
     return ;
@@ -79,13 +81,13 @@ void WS::handleEvent(struct kevent& event)
     }
   }
   // enable event
-  event.flags = EV_ADD;
-  G_SERVER->attachEvent(event);
+  G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, event.fflags, event.udata);
 }
 
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
+  std::cerr << "handle receive\n";
   unsigned char buffer[BUFFER_SIZE];
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
@@ -93,11 +95,15 @@ void WS::handleSocketReceive(struct kevent& event)
 
   if (readSize == -1)
   {
+    std::cerr << "close connection\n";
     ev->connection->closeConnection();
   }
   else
   {
     ev->connection->getReceiveStorage().append(buffer, readSize);
+    Connection& connection = *ev->connection;
+    WS::Job job([&connection](){connection.parseRequestFromStorage();});
+    G_SERVER->attachNewJob(job);
   }
 }
 
@@ -106,7 +112,7 @@ void WS::handleSocketSend(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getReadFileStorage();
-  auto sendSize = send((FileDescriptor)event.ident, buffer.data(), buffer.size(), MSG_DONTWAIT);
+  auto sendSize = ::send((FileDescriptor)event.ident, buffer.data(), buffer.size(), MSG_DONTWAIT);
   // FIXME: buffer.empty() || !buffer -> ERROR?
   if (sendSize == -1)
   {
@@ -123,7 +129,7 @@ void WS::handleFileRead(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
   unsigned char buffer[BUFFER_SIZE];
-  ssize_t readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
+  ssize_t readSize = ::read((FileDescriptor)event.ident, buffer, sizeof(buffer));
   auto& readBuffer = ev->connection->getReadFileStorage();
 
   if (readSize == -1)
@@ -141,7 +147,7 @@ void WS::handleFileWrite(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto buffer = ev->connection->getRequest().getBody();
-  auto writeSize = write(event.ident, buffer.data(), buffer.size());
+  auto writeSize = ::write(event.ident, buffer.data(), buffer.size());
   // get body buffer from request
 
   if (writeSize == -1)
@@ -157,25 +163,35 @@ void WS::handleFileWrite(struct kevent& event)
 void WS::handleAcceptConnection(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  FileDescriptor newSocket = accept((FileDescriptor)event.ident, reinterpret_cast<sockaddr*>(&ev->connection->m_socketIn), nullptr);
+  struct sockaddr_in sockIn;
+  socklen_t len = sizeof(sockIn);
+  FileDescriptor newSocket = ::accept((FileDescriptor)event.ident, reinterpret_cast<sockaddr*>(&sockIn), &len);
 
   if (newSocket < 0)
+  {
+    std::cerr << "accept failed\n";
+    std::cerr << "fd " << event.ident << std::endl;
+    std::cerr << ::strerror(errno);
     return ;
+  }
   else
   {
     auto newConnection = new WS::Connection();
+
     newConnection->setSocketFD(newSocket);
-    newConnection->setThreadNO(ev->threadNO);
+    newConnection->m_socketIn = sockIn;
     struct linger optLinger = {1, 0};
     // set socket option
-    if (fcntl(newSocket, F_SETFL, O_NONBLOCK) < 0)
+    if (::fcntl(newSocket, F_SETFL, O_NONBLOCK) < 0)
     {
       throw (std::runtime_error("fcntl non block failed\n"));
     }
-    if (setsockopt(newSocket, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger)) < 0 )
+    if (::setsockopt(newSocket, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger)) < 0 )
     {
       throw (std::runtime_error("Socket opt failed\n"));
     }
-    std::cerr << "Connect : " << ev->connection->getClientIP() << std::endl; // log
+    std::cerr << "Connect : " << newConnection->getClientIP() << std::endl;
+    // new Event could be leak...
+    G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, new Event(EV_TYPE_RECEIVE_SOCKET, newConnection));
   }
 }
