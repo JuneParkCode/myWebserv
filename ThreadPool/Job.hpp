@@ -5,12 +5,15 @@
 #ifndef JOB_HPP
 #define JOB_HPP
 
+#include <functional>
+#include <utility>
+
 namespace WS
 {
   typedef struct Job
   {
-      void (*handler)(void*);
-      void* data;
+     std::function<void()> handler;
+     explicit Job(std::function<void()> handler_) : handler(std::move(handler_)){};
   } Job;
 }
 

@@ -29,9 +29,10 @@ namespace WS
       std::mutex m_normalJobQueueMutex;
       std::condition_variable m_cvIOJobQueue;
       std::condition_variable m_cvNormalJobQueue;
-  public:
+  private:
       void workIOJob();
       void workNormalJob();
+  public:
       void enqueueIOJob(const struct kevent& ev);
       void enqueueNormalJob(const Job& job);
       explicit ThreadPool(size_t numThreads);

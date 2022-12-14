@@ -92,7 +92,7 @@ void WS::ThreadPool::workNormalJob()
       auto newJob = m_normalJobQueue.front();
       m_normalJobQueue.pop();
       lock.unlock();
-      newJob.handler(newJob.data);
+      newJob.handler();
     }
   }
 }
