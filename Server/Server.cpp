@@ -53,11 +53,15 @@ void WS::Server::run()
     // 서버 시작. 새 이벤트(Req)가 발생할 때 까지 무한루프. (감지하는 kevent)
     int newEventCount = kevent(m_kqueue, nullptr, 0, &event, 1, nullptr);
 
-    if (newEventCount != 0)
+    if (newEventCount > 0)
     {
-      pool.enqueueJob(event);
+      pool.enqueueIOJob(event);
       event.flags = EV_ADD | EV_DISABLE; // 한번에 하나 처리해야하므로 핸들링 이전까지 재워둠.
       attachEvent(event);
+    }
+    else if (newEventCount == 0) // timeout in kq
+    {
+      // clear connections.
     }
     else
     {
