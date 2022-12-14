@@ -11,6 +11,8 @@
 
 #define BACKLOG 1024
 
+typedef int FileDescriptor;
+
 namespace WS
 {
   class VirtualServer
@@ -21,7 +23,7 @@ namespace WS
     std::string m_listenPort;
     std::vector<Location> m_locations;
     Event m_listenEvent;
-    int m_serverFD;
+    FileDescriptor m_serverFD;
   public:
     int getServerFd() const;
     void setServerFd(int mServerFd);
