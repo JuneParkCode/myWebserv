@@ -94,7 +94,7 @@ void WS::Storage::append(WS::Byte* buf, size_t size)
   const size_t NEW_STORAGE_SIZE = m_storageSize + size;
 
   reserve(NEW_STORAGE_SIZE);
-  memcpy(&m_storage[m_storedSize], buf, size);
+  ::memcpy(&m_storage[m_storedSize], buf, size);
   m_storedSize = NEW_STORED_SIZE;
 }
 
@@ -182,7 +182,7 @@ WS::Storage& WS::Storage::operator=(const WS::Storage& rhs)
 
   reserve(rhs.m_storageSize);
   if (!rhs.empty())
-    memcpy(this->m_storage, rhs.m_storage, rhs.m_storedSize);
+    ::memcpy(this->m_storage, rhs.m_storage, rhs.m_storedSize);
   this->m_storedSize = rhs.m_storedSize;
   return (*this);
 }
@@ -222,7 +222,7 @@ WS::Storage WS::Storage::subStorage(size_t start, size_t len) const
   {
     WS::Storage newStorage;
     newStorage.reserve(len);
-    memcpy(newStorage.m_storage, &m_storage[start], len);
+    ::memcpy(newStorage.m_storage, &m_storage[start], len);
     newStorage.m_storedSize = len;
     return (newStorage);
   }
@@ -238,7 +238,7 @@ void WS::Storage::pop(size_t len)
   }
   else
   {
-    memmove(m_storage, &m_storage[len], (m_storageSize - len));
+    ::memmove(m_storage, &m_storage[len], (m_storageSize - len));
     m_storedSize = m_storageSize - len;
   }
 }
@@ -252,7 +252,7 @@ void WS::Storage::reserve(size_t size)
     auto newStorage = new WS::Byte[size];
     size_t temp = m_storedSize;
 
-    memcpy(newStorage, m_storage, m_storedSize);
+    ::memcpy(newStorage, m_storage, m_storedSize);
     delete[] (m_storage);
     m_storage = newStorage;
     m_storedSize = temp;

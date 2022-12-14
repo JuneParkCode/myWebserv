@@ -8,12 +8,8 @@
 
 void WS::Connection::parseRequestFromStorage()
 {
-
-}
-
-void WS::Connection::setThreadNO(size_t threadNO)
-{
-  m_threadNO = threadNO;
+  // parse...
+  std::cout << m_receiveStorage;
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)
@@ -25,17 +21,13 @@ void WS::Connection::closeConnection()
 {
   if (!m_closed)
   {
+    std::cerr << "connection closed\n";
     ::close(m_socketFD);
     ::close(m_request.getReadFd());
     ::close(m_request.getWriteFd());
     m_closed = true;
-    delete (this);
+    ::free (this);
   }
-}
-
-size_t WS::Connection::getThreadNO() const
-{
-  return (m_threadNO);
 }
 
 HTTP::Request& WS::Connection::getRequest()
@@ -65,7 +57,7 @@ std::string WS::Connection::getClientIP() const
   char str[INET_ADDRSTRLEN];
 
   ::inet_ntop( AF_INET, &ipAddr, str, INET_ADDRSTRLEN );
-  return std::string(str);
+  return {str};
 }
 
 WS::Connection::Connection() : m_closed(false)
