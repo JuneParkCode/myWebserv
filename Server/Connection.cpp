@@ -7,6 +7,20 @@
 #include <unistd.h>
 #include <iostream>
 
+WS::Connection::Connection() :
+        m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false),
+        m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this),
+        m_socketSendEvent(EV_TYPE_SEND_SOCKET, this),
+        m_fileReadEvent(EV_TYPE_READ_FILE, this),
+        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this)
+{
+}
+
+WS::Connection::~Connection()
+{
+  closeConnection();
+}
+
 void WS::Connection::parseRequestFromStorage()
 {
 }
@@ -47,24 +61,24 @@ WS::ARequest* WS::Connection::getRequest()
   return (m_request);
 }
 
-WS::Storage& WS::Connection::getReceiveStorage()
+WS::Storage& WS::Connection::getSocketReceiveStorage()
 {
-  return (m_receiveStorage);
+  return (m_socketRecvStorage);
 }
 
-WS::Storage& WS::Connection::getSendStorage()
+WS::Storage& WS::Connection::getSocketSendStorage()
 {
-  return (m_sendStorage);
+  return (m_socketSendStorage);
 }
 
-WS::Storage& WS::Connection::getReadFileStorage()
+WS::Storage& WS::Connection::getFileReadStorage()
 {
-  return (m_readFileStorage);
+  return (m_fileReadStorage);
 }
 
-WS::Storage& WS::Connection::getWriteFileStorage()
+WS::Storage& WS::Connection::getFileWriteStorage()
 {
-  return (m_writeFileStorage);
+  return (m_fileWriteStorage);
 }
 
 
@@ -76,16 +90,6 @@ std::string WS::Connection::getClientIP() const
 
   ::inet_ntop( AF_INET, &ipAddr, str, INET_ADDRSTRLEN );
   return {str};
-}
-
-WS::Connection::Connection() :
-  m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false)
-{
-}
-
-WS::Connection::~Connection()
-{
-  closeConnection();
 }
 
 FileDescriptor WS::Connection::getSocketFd() const
