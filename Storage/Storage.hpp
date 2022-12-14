@@ -8,6 +8,8 @@
 #include <string>
 #include <ostream>
 
+#define BUFFER_SIZE (16 * 1024)
+
 namespace WS
 {
     typedef unsigned char Byte;
@@ -33,7 +35,9 @@ namespace WS
         size_t size() const;
         void append(Byte* buf, size_t size);
         bool empty() const;
-        void clear(); // free m_storage
+        void clear();
+        void clearAll();
+        ssize_t read(ssize_t fd);
         Storage operator+(const std::string& str);
         Storage operator+(CString str);
         Storage operator+(const Storage& str);

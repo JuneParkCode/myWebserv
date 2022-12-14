@@ -1,4 +1,5 @@
 #include "Storage.hpp"
+#include <unistd.h>
 
 // storage move constructor
 WS::Storage::Storage(WS::Storage&& storage) noexcept:
@@ -103,6 +104,15 @@ bool WS::Storage::empty() const
 void WS::Storage::clear()
 {
   m_storedSize = 0;
+}
+
+void WS::Storage::clearAll()
+{
+  delete[] (m_storage);
+  m_storage = nullptr;
+  m_storedSize = 0;
+  m_storageSize = 0;
+  m_cursor = 0;
 }
 
 void WS::Storage::append(WS::Byte* buf, size_t size)
@@ -293,6 +303,18 @@ size_t WS::Storage::getCursor() const
 void WS::Storage::setCursor(size_t cursor)
 {
   m_cursor = cursor;
+}
+
+ssize_t WS::Storage::read(ssize_t fd)
+{
+  reserve(BUFFER_SIZE + m_storedSize);
+  ssize_t readSize = ::read(fd, &m_storage[m_storedSize], BUFFER_SIZE);
+
+  if (readSize > 0)
+  {
+    m_storedSize += readSize;
+  }
+  return (readSize);
 }
 
 std::ostream& operator<<(std::ostream& stream, const WS::Storage& buf)
