@@ -113,8 +113,3 @@ void WS::Connection::setWriteFd(FileDescriptor writeFd)
 {
   m_writeFD = writeFd;
 }
-
-std::mutex& WS::Connection::getLock()
-{
-  return (m_connectionMutex);
-}

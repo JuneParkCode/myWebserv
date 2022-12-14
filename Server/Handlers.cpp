@@ -97,9 +97,7 @@ void WS::handleSocketReceive(struct kevent& event)
   {
     connection.getReceiveStorage().append(buffer, readSize);
     auto jobHandler = [&connection](){
-      std::unique_lock<std::mutex> lock(connection.getLock());
       connection.parseRequestFromStorage();
-      lock.unlock();
     };
     WS::Job job(jobHandler);
     G_SERVER->attachNewJob(job);
