@@ -17,6 +17,8 @@ set(SOURCE_FILES
         Server/Server.cpp
         Server/VirtualServer.cpp
         ThreadPool/ThreadPool.cpp
+        Server/RequestParser.cpp
+        Server/RequestParser.hpp
         webserv.cpp)
 
 add_executable(miniWebserv
@@ -30,4 +32,5 @@ target_include_directories(miniWebserv
         Storage
         Server
         ThreadPool
+        ARequest
         )

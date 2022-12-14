@@ -4,22 +4,20 @@
 #include "Storage.hpp"
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
+#include "ARequest.hpp"
 #include <map>
 #include <iostream>
 #include <chrono>
 
 namespace HTTP
 {
-  class Request
+  class Request : public WS::ARequest
   {
   private:
       std::map<std::string, std::string> m_headers;
       WS::Storage m_body;
       ssize_t m_contentLength;
-      std::chrono::system_clock m_requestTime;
-      FileDescriptor m_connectedSocketFD;
-      FileDescriptor m_readFD;
-      FileDescriptor m_writeFD;
+      std::chrono::system_clock m_requestTime; // for timeout
       HTTP::Response m_response;
       std::string m_method;
       std::string m_URL;
@@ -38,20 +36,14 @@ namespace HTTP
       void setContentLength(ssize_t mContentLength);
       const std::chrono::system_clock& getRequestTime() const;
       void setRequestTime(const std::chrono::system_clock& mRequestTime);
-      FileDescriptor getConnectedSocketFd() const;
-      void setConnectedSocketFd(FileDescriptor mConnectedSocketFd);
-      FileDescriptor getReadFd() const;
-      void setReadFd(FileDescriptor mReadFd);
-      FileDescriptor getWriteFd() const;
-      void setWriteFd(FileDescriptor mWriteFd);
       const Response& getResponse() const;
       void setResponse(const Response& mResponse);
   public:
-//      HTTP::Response& response();
+      void response();
       bool isTimeout();
       bool isFinished();
       Request();
-      ~Request();
+      ~Request() = default;
   };
 }
 

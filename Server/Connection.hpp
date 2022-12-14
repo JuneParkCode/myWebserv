@@ -7,7 +7,7 @@
 
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
-#include "Request.hpp"
+#include "ARequest.hpp"
 #include <queue>
 #include <netinet/in.h>
 
@@ -21,7 +21,9 @@ namespace WS
   {
   private:
       FileDescriptor m_socketFD;
-      HTTP::Request m_request;
+      FileDescriptor m_readFD;
+      FileDescriptor m_writeFD;
+      WS::ARequest* m_request;
       WS::Storage m_receiveStorage;
       WS::Storage m_readFileStorage;
       WS::Storage m_writeFileStorage;
@@ -32,11 +34,17 @@ namespace WS
       void parseRequestFromStorage();
       void setSocketFD(FileDescriptor fd);
       void closeConnection(); // close connection and delete jobs from thread Queue
-      HTTP::Request& getRequest();
+      ARequest* getRequest();
       WS::Storage& getReceiveStorage();
       WS::Storage& getReadFileStorage();
       WS::Storage& getWriteFileStorage();
       std::string getClientIP() const;
+      FileDescriptor getSocketFd() const;
+      void setSocketFd(FileDescriptor socketFd);
+      FileDescriptor getReadFd() const;
+      void setReadFd(FileDescriptor readFd);
+      FileDescriptor getWriteFd() const;
+      void setWriteFd(FileDescriptor writeFd);
       Connection();
       ~Connection();
   };

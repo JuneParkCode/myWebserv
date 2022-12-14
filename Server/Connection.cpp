@@ -5,11 +5,10 @@
 #include "Connection.hpp"
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <iostream>
 
 void WS::Connection::parseRequestFromStorage()
 {
-  // parse...
-  std::cout << m_receiveStorage;
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)
@@ -23,14 +22,14 @@ void WS::Connection::closeConnection()
   {
     std::cerr << "connection closed\n";
     ::close(m_socketFD);
-    ::close(m_request.getReadFd());
-    ::close(m_request.getWriteFd());
+    ::close(m_readFD);
+    ::close(m_writeFD);
     m_closed = true;
     ::free (this);
   }
 }
 
-HTTP::Request& WS::Connection::getRequest()
+WS::ARequest* WS::Connection::getRequest()
 {
   return (m_request);
 }
@@ -60,7 +59,7 @@ std::string WS::Connection::getClientIP() const
   return {str};
 }
 
-WS::Connection::Connection() : m_closed(false)
+WS::Connection::Connection() : m_socketFD(-1), m_readFD(-1), m_writeFD(-1), m_closed(false)
 {
 
 }
@@ -68,4 +67,34 @@ WS::Connection::Connection() : m_closed(false)
 WS::Connection::~Connection()
 {
 
+}
+
+FileDescriptor WS::Connection::getSocketFd() const
+{
+  return m_socketFD;
+}
+
+void WS::Connection::setSocketFd(FileDescriptor socketFd)
+{
+  m_socketFD = socketFd;
+}
+
+FileDescriptor WS::Connection::getReadFd() const
+{
+  return m_readFD;
+}
+
+void WS::Connection::setReadFd(FileDescriptor readFd)
+{
+  m_readFD = readFd;
+}
+
+FileDescriptor WS::Connection::getWriteFd() const
+{
+  return m_writeFD;
+}
+
+void WS::Connection::setWriteFd(FileDescriptor writeFd)
+{
+  m_writeFD = writeFd;
 }

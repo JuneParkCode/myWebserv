@@ -61,7 +61,8 @@ void WS::handleEvent(struct kevent& event)
         return ;
       }
       handleSocketReceive(event);
-      break ;
+      // receive 의 경우 request 가 모두 종료되고 난 이후에 다시 받을 수 있도록 함..
+      return ;
     }
     case EV_TYPE_SEND_SOCKET:
     {

@@ -65,36 +65,6 @@ void HTTP::Request::setRequestTime(const std::chrono::system_clock& mRequestTime
   m_requestTime = mRequestTime;
 }
 
-FileDescriptor HTTP::Request::getConnectedSocketFd() const
-{
-  return m_connectedSocketFD;
-}
-
-void HTTP::Request::setConnectedSocketFd(FileDescriptor mConnectedSocketFd)
-{
-  m_connectedSocketFD = mConnectedSocketFd;
-}
-
-FileDescriptor HTTP::Request::getReadFd() const
-{
-  return m_readFD;
-}
-
-void HTTP::Request::setReadFd(FileDescriptor mReadFd)
-{
-  m_readFD = mReadFd;
-}
-
-FileDescriptor HTTP::Request::getWriteFd() const
-{
-  return m_writeFD;
-}
-
-void HTTP::Request::setWriteFd(FileDescriptor mWriteFd)
-{
-  m_writeFD = mWriteFd;
-}
-
 const HTTP::Response& HTTP::Request::getResponse() const
 {
   return m_response;
@@ -116,11 +86,6 @@ bool HTTP::Request::isFinished()
 }
 
 HTTP::Request::Request()
-{
-
-}
-
-HTTP::Request::~Request()
 {
 
 }
