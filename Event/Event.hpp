@@ -22,7 +22,6 @@ namespace WS
     {
         EventType type;
         WS::Connection* connection;
-        size_t threadNO;
         Event() = default;
         Event(EventType type_, Connection* connection_): type(type_), connection(connection_){};
     } Event;
