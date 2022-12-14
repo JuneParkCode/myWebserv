@@ -47,7 +47,7 @@ namespace HTTP
       const Response& getResponse() const;
       void setResponse(const Response& mResponse);
   public:
-      HTTP::Response& response();
+//      HTTP::Response& response();
       bool isTimeout();
       bool isFinished();
       Request();

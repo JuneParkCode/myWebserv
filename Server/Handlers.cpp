@@ -1,8 +1,8 @@
 #include "Handlers.hpp"
+#include "Server.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
-#include <Server.hpp>
 
 #define BUFFER_SIZE (16 * 1024)
 

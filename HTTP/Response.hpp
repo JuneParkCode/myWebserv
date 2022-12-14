@@ -24,7 +24,7 @@ namespace HTTP
       const std::string& getVersion() const;
       const std::string& getStatusCode() const;
       const std::string& getStatusMesseage() const;
-      const std::pair<std::string, std::string>& getHeader(const std::string& key) const;
+      const std::string& getHeader(const std::string& key) const;
       void send();
       Response();
       ~Response();

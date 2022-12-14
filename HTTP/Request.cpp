@@ -104,3 +104,23 @@ void HTTP::Request::setResponse(const HTTP::Response& mResponse)
 {
   m_response = mResponse;
 }
+
+bool HTTP::Request::isTimeout()
+{
+  return false;
+}
+
+bool HTTP::Request::isFinished()
+{
+  return false;
+}
+
+HTTP::Request::Request()
+{
+
+}
+
+HTTP::Request::~Request()
+{
+
+}

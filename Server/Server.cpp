@@ -7,13 +7,12 @@
 #include "Event.hpp"
 #include <iostream>
 
-extern WS::Server* G_SERVER;
-
 void WS::Server::attachEvent(struct kevent& event) const
 {
   if (kevent(m_kqueue, &event, 1, nullptr, 0, nullptr) < 0)
   {
     std::cerr << "event attach failed\n";
+    std::cerr << ::strerror(errno);
     // 별도의 처리가 필요?
   }
 }
@@ -34,6 +33,7 @@ void WS::Server::listenVirtualServers()
 
 void WS::Server::run()
 {
+  m_kqueue = kqueue();
   // listen ports
   try
   {
@@ -44,7 +44,6 @@ void WS::Server::run()
     std::cerr << e.what();
     return ;
   }
-  G_SERVER = this;
   ThreadPool pool(NUM_THREADS_DEF);
   struct kevent event;
 
@@ -73,4 +72,20 @@ void WS::Server::run()
 WS::Server::Server()
 {
   // parse config file and set virtual servers
+
+  // temporary
+  Location loc;
+  loc.setAutoIndex(false);
+  loc.setRoot("../");
+  std::vector<std::string> tmp;
+  tmp.emplace_back("index.html");
+  loc.setIndex(tmp);
+  loc.setClientMaxBodySize(10000);
+  tmp.clear();
+  tmp.emplace_back("GET");
+  loc.setAllowMethods(tmp);
+  tmp.clear();
+  loc.setAllowCGI(tmp);
+  std::vector<Location> locs;
+  m_virtualServers.emplace_back("webserv", "0.0.0.0", "42424", locs);
 }
