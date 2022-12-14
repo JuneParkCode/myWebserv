@@ -16,7 +16,8 @@ set(SOURCE_FILES
         Server/Location.cpp
         Server/Server.cpp
         Server/VirtualServer.cpp
-        ThreadPool/ThreadPool.cpp)
+        ThreadPool/ThreadPool.cpp
+        )
 
 add_executable(miniWebserv
         ${SOURCE_FILES}

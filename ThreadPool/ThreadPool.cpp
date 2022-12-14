@@ -5,77 +5,94 @@
 #include "ThreadPool.hpp"
 #include "Handlers.hpp"
 
-void WS::ThreadPool::enqueueJob(const struct kevent& ev)
+void WS::ThreadPool::enqueueIOJob(const struct kevent& ev)
 {
   if (stop)
     throw (std::runtime_error("thread stopped\n"));
-  std::lock_guard<std::mutex> lock(m_jobQueueMutex);
+  std::lock_guard<std::mutex> lock(m_ioJobQueueMutex);
+  m_ioJobQueue.push(ev);
+  m_cvIOJobQueue.notify_one();
+}
 
-  auto event = reinterpret_cast<Event*>(ev.udata);
-  const size_t THREAD_NO = event->connection->getThreadNO();
-  if (event->type == EV_TYPE_ACCEPT_CONNECTION)
-  {
-    m_jobQueue.push(ev);
-    m_cvJobQueue.notify_all();
-  }
-  else
-  {
-    m_threadJobQueues[THREAD_NO - 1]->push(ev);
-    m_cvJobQueue.notify_one();
-  }
+void WS::ThreadPool::enqueueNormalJob(const Job& job)
+{
+  if (stop)
+    throw (std::runtime_error("thread stopped\n"));
+  std::lock_guard<std::mutex> lock(m_normalJobQueueMutex);
+  m_normalJobQueue.push(job);
+  m_cvNormalJobQueue.notify_one();
 }
 
 WS::ThreadPool::~ThreadPool()
 {
   stop = true;
-  m_cvJobQueue.notify_all();
+  m_cvIOJobQueue.notify_all();
   for (auto& thread : m_threads)
   {
     thread.join();
   }
 }
 
+// I/O 작업을 위한 thread와 일반 논리적 작업을 위한 thread를 구분시켜 생성함.
 WS::ThreadPool::ThreadPool(const size_t numThreads) :
         NUM_THREADS(numThreads), stop(false)
 {
+  const size_t NUM_IO_THREADS = NUM_THREADS / 2;
+  const size_t NUM_NORMAL_THREADS = NUM_THREADS - NUM_IO_THREADS;
+
   m_threads.reserve(NUM_THREADS);
-  for (size_t i = 0; i < NUM_THREADS; ++i)
+  for (size_t i = 0; i < NUM_IO_THREADS; ++i)
   {
-    m_threads.emplace_back([this, i](){this->work(i + 1);});
+    m_threads.emplace_back([this](){this->workIOJob();});
+  }
+  for (size_t i = 0; i < NUM_NORMAL_THREADS; ++i)
+  {
+    m_threads.emplace_back([this](){this->workNormalJob();});
   }
 }
 
-void WS::ThreadPool::work(const size_t THREAD_NO)
+void WS::ThreadPool::workIOJob()
 {
-  //set own queue
-  std::queue<struct kevent> threadJobQueue;
-  std::unique_lock<std::mutex> tqLock(m_jobQueueMutex);
-  this->m_threadJobQueues.push_back(&threadJobQueue);
-  tqLock.unlock();
+  auto waitCondition = [this](){
+    return (this->stop || !this->m_ioJobQueue.empty());
+  };
 
   while (true)
   {
-    std::unique_lock<std::mutex> lock(m_jobQueueMutex);
-    m_cvJobQueue.wait(lock, [this, &threadJobQueue](){return (this->stop || !this->m_jobQueue.empty() || !threadJobQueue.empty());});
+    std::unique_lock<std::mutex> lock(m_ioJobQueueMutex);
+
+    m_cvIOJobQueue.wait(lock, waitCondition);
     if (stop)
       return ;
-    else if (!this->m_jobQueue.empty())
+    else if (!this->m_ioJobQueue.empty())
     {
-      auto newEV = m_jobQueue.front();
-      m_jobQueue.pop();
+      auto newEV = m_ioJobQueue.front();
+      m_ioJobQueue.pop();
       lock.unlock();
-
-      auto event = reinterpret_cast<Event*>(newEV.udata);
-      event->threadNO = THREAD_NO;
       WS::handleEvent(newEV);
     }
-    else if (!threadJobQueue.empty())
-    {
-      auto newEV = threadJobQueue.front();
-      threadJobQueue.pop();
-      lock.unlock();
+  }
+}
 
-      WS::handleEvent(newEV);
+void WS::ThreadPool::workNormalJob()
+{
+  auto waitCondition = [this](){
+    return (this->stop || !this->m_normalJobQueue.empty());
+  };
+
+  while (true)
+  {
+    std::unique_lock<std::mutex> lock(m_normalJobQueueMutex);
+
+    m_cvNormalJobQueue.wait(lock, waitCondition);
+    if (stop)
+      return ;
+    else if (!this->m_normalJobQueue.empty())
+    {
+      auto newJob = m_normalJobQueue.front();
+      m_normalJobQueue.pop();
+      lock.unlock();
+      newJob.handler(newJob.data);
     }
   }
 }

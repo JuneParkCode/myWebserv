@@ -6,6 +6,7 @@
 #define THREADPOOL_HPP
 
 #include "Event.hpp"
+#include "Job.hpp"
 #include <thread>
 #include <queue>
 #include <vector>
@@ -22,13 +23,17 @@ namespace WS
       const size_t NUM_THREADS;
       bool stop;
       std::vector<std::thread> m_threads;
-      std::queue<struct kevent> m_jobQueue;
-      std::vector<std::queue<struct kevent>* > m_threadJobQueues;
-      std::mutex m_jobQueueMutex;
-      std::condition_variable m_cvJobQueue;
+      std::queue<struct kevent> m_ioJobQueue;
+      std::queue<Job> m_normalJobQueue;
+      std::mutex m_ioJobQueueMutex;
+      std::mutex m_normalJobQueueMutex;
+      std::condition_variable m_cvIOJobQueue;
+      std::condition_variable m_cvNormalJobQueue;
   public:
-      void work(size_t THREAD_NO);
-      void enqueueJob(const struct kevent& ev);
+      void workIOJob();
+      void workNormalJob();
+      void enqueueIOJob(const struct kevent& ev);
+      void enqueueNormalJob(const Job& job);
       explicit ThreadPool(size_t numThreads);
       ~ThreadPool();
   };
