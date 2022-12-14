@@ -18,7 +18,10 @@ namespace WS
         Byte* m_storage;
         size_t m_storedSize;
         size_t m_storageSize;
+        size_t m_cursor;
     public:
+        size_t getCursor() const;
+        void setCursor(size_t cursor);
         size_t find(Byte needle) const;
         size_t find(const std::string& needle) const;
         size_t rfind(Byte needle) const;

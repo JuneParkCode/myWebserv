@@ -4,11 +4,13 @@
 WS::Storage::Storage(WS::Storage&& storage) noexcept:
         m_storage(storage.m_storage),
         m_storageSize(storage.m_storageSize),
-        m_storedSize(storage.m_storedSize)
+        m_storedSize(storage.m_storedSize),
+        m_cursor(0)
 {
   storage.m_storage = nullptr;
   storage.m_storedSize = 0;
   storage.m_storageSize = 0;
+  storage.m_cursor = 0;
 }
 
 WS::Storage::Storage(const WS::Storage& storage)
@@ -19,7 +21,8 @@ WS::Storage::Storage(const WS::Storage& storage)
 WS::Storage::Storage():
         m_storage(nullptr),
         m_storedSize(0),
-        m_storageSize(0)
+        m_storageSize(0),
+        m_cursor(0)
 {
 }
 
@@ -200,6 +203,7 @@ WS::Storage& WS::Storage::operator=(const WS::Storage& rhs)
   if (!rhs.empty())
     ::memcpy(this->m_storage, rhs.m_storage, rhs.m_storedSize);
   this->m_storedSize = rhs.m_storedSize;
+  this->m_cursor = rhs.m_cursor;
   return (*this);
 }
 
@@ -279,6 +283,16 @@ void WS::Storage::reserve(size_t size)
 const WS::Byte* WS::Storage::data() const
 {
   return (m_storage);
+}
+
+size_t WS::Storage::getCursor() const
+{
+  return (m_cursor);
+}
+
+void WS::Storage::setCursor(size_t cursor)
+{
+  m_cursor = cursor;
 }
 
 std::ostream& operator<<(std::ostream& stream, const WS::Storage& buf)
