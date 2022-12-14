@@ -22,13 +22,22 @@ void WS::Connection::closeConnection()
   {
     m_closed = true;
     if (m_socketFD > 0)
+    {
       ::close(m_socketFD);
+      m_socketFD = -1;
+    }
     if (m_readFD > 0)
+    {
       ::close(m_readFD);
+      m_readFD = -1;
+    }
     if (m_writeFD > 0)
+    {
       ::close(m_writeFD);
+      m_writeFD = -1;
+    }
     delete (m_request);
-    ::free (this);
+    m_request = nullptr;
     std::cerr << "connection closed\n";
   }
 }
@@ -70,7 +79,7 @@ WS::Connection::Connection() :
 
 WS::Connection::~Connection()
 {
-
+  closeConnection();
 }
 
 FileDescriptor WS::Connection::getSocketFd() const

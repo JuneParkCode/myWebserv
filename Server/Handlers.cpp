@@ -4,19 +4,13 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
+#include <iostream>
 
 #define BUFFER_SIZE (16 * 1024)
 
 extern WS::Server* G_SERVER;
-/*
- * after EV_EOF, jobs must be deleted.... -> multi-threading 으로 오는 부작용
- * Solution 01 : use kqueue per thread            -> 이번 webser v에서 활용한 바 있음. kqueue 를 여러번 만드는 것이 조금 꺼림직 하다.
- *          02 : delete all jobs after EV_EOF     -> EVFILT_READ 와 같은 이벤트는 호출이 여러번 되기 떄문에 EV_CLEAR 를 만들어야 한다.
- *          03 : get Event -> Disable Event
- *               -> handling event
- *               -> enable event                  -> event 를 너무 자주 enable disable 시키는 감이 있음. 내부 로직에 의해서 속도가 낮아지는 것이 아닐까?
- * 우선은 Solution 03을 기준 작성할 것.
- * */
+
+// 같은 connection에서는 call이 작업에 순차적으로 발생하기 때문에 connection을 delete 하기만 하면 이후에 같은 connection에 대해서 작업을 하지 않음.
 
 void WS::handleEvent(struct kevent& event)
 {
@@ -25,7 +19,7 @@ void WS::handleEvent(struct kevent& event)
   if (event.flags & EV_ERROR) // EV_ERROR -> disconnect connection...
   {
     std::cerr << "EV_ERR\n";
-    ev->connection->closeConnection();
+    delete (ev->connection);
     delete (ev);
     return ;
   }
@@ -56,7 +50,7 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF) // connection closed
       {
-        ev->connection->closeConnection();
+        delete (ev->connection);
         delete (ev);
         return ;
       }
@@ -68,7 +62,7 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF) // connection closed
       {
-        ev->connection->closeConnection();
+        delete (ev->connection);
         delete (ev);
         return ;
       }
@@ -97,7 +91,7 @@ void WS::handleSocketReceive(struct kevent& event)
   if (readSize == -1)
   {
     std::cerr << "close connection\n";
-    ev->connection->closeConnection();
+    delete (ev->connection);
   }
   else
   {
@@ -117,7 +111,7 @@ void WS::handleSocketSend(struct kevent& event)
   // FIXME: buffer.empty() || !buffer -> ERROR?
   if (sendSize == -1)
   {
-    ev->connection->closeConnection();
+    delete (ev->connection);
   }
   else
   {
@@ -135,7 +129,7 @@ void WS::handleFileRead(struct kevent& event)
 
   if (readSize == -1)
   {
-    ev->connection->closeConnection();
+    delete (ev->connection);
   }
   else
   {
@@ -147,13 +141,13 @@ void WS::handleFileRead(struct kevent& event)
 void WS::handleFileWrite(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto buffer = ev->connection->getRequest().getBody();
+  auto buffer = ev->connection->getWriteFileStorage();
   auto writeSize = ::write(event.ident, buffer.data(), buffer.size());
   // get body buffer from request
 
   if (writeSize == -1)
   {
-    ev->connection->closeConnection();
+    delete (ev->connection);
   }
   else
   {
