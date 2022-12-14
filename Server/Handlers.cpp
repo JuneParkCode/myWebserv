@@ -1,6 +1,7 @@
 #include "Handlers.hpp"
 #include "Server.hpp"
 #include "Job.hpp"
+함#include "Connection.hpp"
 #include <unistd.h>
 #include <sys/socket.h>
 #include <fcntl.h>
@@ -20,7 +21,6 @@ void WS::handleEvent(struct kevent& event)
   {
     std::cerr << "EV_ERR\n";
     delete (ev->connection);
-    delete (ev);
     return ;
   }
 
@@ -30,7 +30,6 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF) // file read done
       {
-        delete (ev);
         return ;
       }
       handleFileRead(event);
@@ -40,7 +39,6 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF)
       {
-        delete (ev);
         return ;
       }
       handleFileWrite(event);
@@ -51,7 +49,6 @@ void WS::handleEvent(struct kevent& event)
       if (event.flags & EV_EOF) // connection closed
       {
         delete (ev->connection);
-        delete (ev);
         return ;
       }
       handleSocketReceive(event);
@@ -63,39 +60,37 @@ void WS::handleEvent(struct kevent& event)
       if (event.flags & EV_EOF) // connection closed
       {
         delete (ev->connection);
-        delete (ev);
         return ;
       }
       handleSocketSend(event);
-      break ;
+      return ;
     }
     case EV_TYPE_ACCEPT_CONNECTION:
     {
       handleAcceptConnection(event);
-      break ;
+      G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, event.fflags, event.udata);
+      return ;
     }
   }
   // enable event
-  G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, event.fflags, event.udata);
 }
 
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
-  std::cerr << "handle receive\n";
   unsigned char buffer[BUFFER_SIZE];
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
-  auto& receiveBuffer = ev->connection->getReceiveStorage();
   auto& connection = *ev->connection;
+  auto& receiveBuffer = connection.getSocketReceiveStorage();
 
+  auto readSize = read((FileDescriptor)event.ident, buffer, sizeof(buffer));
   if (readSize == -1)
   {
     delete (ev->connection);
   }
   else
   {
-    connection.getReceiveStorage().append(buffer, readSize);
+    connection.getSocketReceiveStorage().append(buffer, readSize);
     auto jobHandler = [&connection](){
       connection.parseRequestFromStorage();
     };
@@ -124,11 +119,11 @@ void WS::handleSocketSend(struct kevent& event)
 // read data from file and store in response send buffer
 void WS::handleFileRead(struct kevent& event)
 {
-  auto ev = reinterpret_cast<Event*>(event.udata);
   unsigned char buffer[BUFFER_SIZE];
-  ssize_t readSize = ::read((FileDescriptor)event.ident, buffer, sizeof(buffer));
-  auto& readBuffer = ev->connection->getReadFileStorage();
+  auto ev = reinterpret_cast<Event*>(event.udata);
+  auto& readBuffer = ev->connection->getFileReadStorage();
 
+  ssize_t readSize = ::read((FileDescriptor)event.ident, buffer, sizeof(buffer));
   if (readSize == -1)
   {
     delete (ev->connection);
@@ -143,7 +138,7 @@ void WS::handleFileRead(struct kevent& event)
 void WS::handleFileWrite(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto buffer = ev->connection->getWriteFileStorage();
+  auto buffer = ev->connection->getFileWriteStorage();
   auto writeSize = ::write(event.ident, buffer.data(), buffer.size());
   // get body buffer from request
 
@@ -159,16 +154,13 @@ void WS::handleFileWrite(struct kevent& event)
 
 void WS::handleAcceptConnection(struct kevent& event)
 {
-  auto ev = reinterpret_cast<Event*>(event.udata);
   struct sockaddr_in sockIn;
   socklen_t len = sizeof(sockIn);
   FileDescriptor newSocket = ::accept((FileDescriptor)event.ident, reinterpret_cast<sockaddr*>(&sockIn), &len);
 
   if (newSocket < 0)
   {
-    std::cerr << "accept failed\n";
-    std::cerr << "fd " << event.ident << std::endl;
-    std::cerr << ::strerror(errno);
+    std::cerr << "accept failed" << ::strerror(errno);
     return ;
   }
   else
@@ -188,7 +180,6 @@ void WS::handleAcceptConnection(struct kevent& event)
       throw (std::runtime_error("Socket opt failed\n"));
     }
     std::cerr << "Connect : " << newConnection->getClientIP() << std::endl;
-    // new Event could be leak...
-    G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, new Event(EV_TYPE_RECEIVE_SOCKET, newConnection));
+    G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, &newConnection->m_socketRecvEvent);
   }
 }
