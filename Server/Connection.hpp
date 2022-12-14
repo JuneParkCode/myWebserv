@@ -25,16 +25,13 @@ namespace WS
       WS::Storage m_receiveStorage;
       WS::Storage m_readFileStorage;
       WS::Storage m_writeFileStorage;
-      size_t m_threadNO;
       bool m_closed;
   public:
       struct sockaddr_in m_socketIn;
   public:
       void parseRequestFromStorage();
-      void setThreadNO(size_t threadNO);
       void setSocketFD(FileDescriptor fd);
       void closeConnection(); // close connection and delete jobs from thread Queue
-      size_t getThreadNO() const;
       HTTP::Request& getRequest();
       WS::Storage& getReceiveStorage();
       WS::Storage& getReadFileStorage();
