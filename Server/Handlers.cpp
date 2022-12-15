@@ -174,6 +174,8 @@ void WS::handleFileWrite(struct kevent& event)
     if (buffer.size() <= bufferCursor + writeSize) // write buffer to file done
     {
       buffer.clear();
+      close(ev->connection->getWriteFd());
+      ev->connection->setWriteFd(-1);
     }
     else // partial write...
     {
