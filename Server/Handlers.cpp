@@ -32,7 +32,7 @@ void WS::handleEvent(struct kevent& event)
       {
         return ;
       }
-      handleFileRead(event);
+      handleFileReadToSend(event);
       return ;
     }
     case EV_TYPE_WRITE_FILE:
@@ -118,12 +118,12 @@ void WS::handleSocketSend(struct kevent& event)
       if (ev->connection->getReadFd() < 0)
       {
         // enable socket recv
-        G_SERVER->attachEvent(ev->connection->getSocketFd(), event.filter, EV_ADD, event.fflags, &ev->connection->m_socketRecvEvent);
+        G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD, event.fflags, &ev->connection->m_socketRecvEvent);
       }
       else
       {
         // read more..
-        G_SERVER->attachEvent(ev->connection->getReadFd(), event.filter, EV_ADD, event.fflags, &ev->connection->m_fileReadEvent);
+        G_SERVER->attachEvent(ev->connection->getReadFd(), EVFILT_READ, EV_ADD, event.fflags, &ev->connection->m_fileReadEvent);
       }
     }
     else // partial send...
@@ -135,8 +135,7 @@ void WS::handleSocketSend(struct kevent& event)
   }
 }
 
-// read data from file and store in response send buffer
-void WS::handleFileRead(struct kevent& event)
+void WS::handleFileReadToSend(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& readBuffer = ev->connection->getFileReadStorage();
@@ -146,27 +145,42 @@ void WS::handleFileRead(struct kevent& event)
   {
     delete (ev->connection);
   }
-  else
+  else if (readSize == 0 || readSize < BUFFER_SIZE) // read done
   {
+    close(ev->connection->getReadFd());
+    ev->connection->setReadFd(-1);
+  }
 
+  if (readSize > 0) // send it!
+  {
+    G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_WRITE, EV_ADD, 0, &ev->connection->m_socketSendEvent);
   }
 }
 
-// write body buffer from request to fd
 void WS::handleFileWrite(struct kevent& event)
 {
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto buffer = ev->connection->getFileWriteStorage();
-  auto writeSize = ::write(event.ident, buffer.data(), buffer.size());
-  // get body buffer from request
+  auto& buffer = ev->connection->getFileWriteStorage();
+  const size_t bufferCursor = buffer.getCursor();
+  const size_t BUF_SIZE = (buffer.size() - bufferCursor);
 
+  auto writeSize = ::write((FileDescriptor)event.ident, &buffer.data()[bufferCursor], BUF_SIZE);
   if (writeSize == -1)
   {
     delete (ev->connection);
   }
   else
   {
-    buffer.pop(writeSize);
+    if (buffer.size() <= bufferCursor + writeSize) // write buffer to file done
+    {
+      buffer.clear();
+    }
+    else // partial write...
+    {
+      buffer.setCursor(bufferCursor + writeSize);
+      // write more..
+      G_SERVER->attachEvent(ev->connection->getWriteFd(), EVFILT_WRITE, EV_ADD, event.fflags, &ev->connection->m_fileWriteEvent);
+    }
   }
 }
 

@@ -9,7 +9,7 @@ namespace WS
     void handleEvent(struct kevent& event);
     void handleSocketReceive(struct kevent& event);
     void handleSocketSend(struct kevent& event);
-    void handleFileRead(struct kevent& event);
+    void handleFileReadToSend(struct kevent& event);
     void handleFileWrite(struct kevent& event);
     void handleAcceptConnection(struct kevent& event);
 }
