@@ -27,7 +27,7 @@ namespace WS
     void attachEvent(struct kevent& event) const;
     void attachEvent(ssize_t ident, size_t filter, size_t flags, size_t fflags, void* udata) const;
     void attachNewJob(const Job& job);
-      [[noreturn]] void run();
+    void run();
     Server();
     ~Server() = default;
   };

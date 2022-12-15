@@ -5,6 +5,7 @@
 #include "ThreadPool.hpp"
 #include "Server.hpp"
 #include "Event.hpp"
+#include "Handlers.hpp"
 #include <iostream>
 
 void WS::Server::attachEvent(struct kevent& event) const
@@ -35,13 +36,13 @@ void WS::Server::listenVirtualServers()
   for (auto& vServer : m_virtualServers)
   {
     vServer.listen();
-    vServer.setListenEvent(Event(EV_TYPE_ACCEPT_CONNECTION, nullptr));
+    vServer.setListenEvent(Event(EV_TYPE_ACCEPT_CONNECTION, nullptr, WS::handleAcceptConnection));
 
     attachEvent(vServer.getServerFd(), EVFILT_READ, EV_ADD, 0, &vServer.getListenEvent());
   }
 }
 
-[[noreturn]] void WS::Server::run()
+void WS::Server::run()
 {
   m_kqueue = kqueue();
   // listen ports
