@@ -39,6 +39,13 @@ size_t WS::Storage::find(WS::Byte needle) const
   return (static_cast<WS::Byte*>(memchr(m_storage, needle, m_storedSize)) - this->m_storage);
 }
 
+size_t WS::Storage::find(WS::Byte needle, size_t start) const
+{
+  if (this->empty())
+    return (WS::Storage::NOT_FOUND);
+  return (static_cast<WS::Byte*>(memchr(&m_storage[start], needle, m_storedSize)) - this->m_storage);
+}
+
 static bool isMatched(const WS::Byte* bytes, const std::string& needle, const size_t byteSize)
 {
   if (needle.size() < byteSize)
@@ -56,6 +63,18 @@ size_t WS::Storage::find(const std::string& needle) const
   if (this->empty())
     return (WS::Storage::NOT_FOUND);
   for (size_t idx = 0; idx < m_storedSize; ++idx)
+  {
+    if (isMatched(&m_storage[idx], needle, (m_storedSize - idx)))
+      return (idx);
+  }
+  return (WS::Storage::NOT_FOUND);
+}
+
+size_t WS::Storage::find(const std::string& needle, size_t start) const
+{
+  if (this->empty())
+    return (WS::Storage::NOT_FOUND);
+  for (size_t idx = start; idx < m_storedSize; ++idx)
   {
     if (isMatched(&m_storage[idx], needle, (m_storedSize - idx)))
       return (idx);
@@ -115,7 +134,7 @@ void WS::Storage::clearAll()
   m_cursor = 0;
 }
 
-void WS::Storage::append(WS::Byte* buf, size_t size)
+void WS::Storage::append(const WS::Byte* buf, size_t size)
 {
   if (buf == nullptr || size == 0)
     return ;
@@ -251,9 +270,10 @@ WS::Storage WS::Storage::subStorage(size_t start, size_t len) const
   else
   {
     WS::Storage newStorage;
-    newStorage.reserve(len);
+    newStorage.reserve(len + 1);
     ::memcpy(newStorage.m_storage, &m_storage[start], len);
     newStorage.m_storedSize = len;
+    newStorage.m_storage[m_storedSize] = 0; // for stringfy..
     return (newStorage);
   }
 }

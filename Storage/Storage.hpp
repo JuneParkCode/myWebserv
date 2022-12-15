@@ -25,7 +25,9 @@ namespace WS
         size_t getCursor() const;
         void setCursor(size_t cursor);
         size_t find(Byte needle) const;
+        size_t find(Byte needle, size_t start) const;
         size_t find(const std::string& needle) const;
+        size_t find(const std::string& needle, size_t start) const;
         size_t rfind(Byte needle) const;
         size_t rfind(const std::string& needle) const;
         Storage subStorage(size_t start, size_t len) const;
@@ -33,7 +35,7 @@ namespace WS
         void reserve(size_t size);
         const Byte* data() const;
         size_t size() const;
-        void append(Byte* buf, size_t size);
+        void append(const Byte* buf, size_t size);
         bool empty() const;
         void clear();
         void clearAll();
