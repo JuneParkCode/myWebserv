@@ -45,14 +45,14 @@ void HTTP::Request::setBody(const WS::Storage& mBody)
   m_body = mBody;
 }
 
-ssize_t HTTP::Request::getContentLength() const
+size_t HTTP::Request::getContentLength() const
 {
-  return m_contentLength;
+  return (m_contentLength);
 }
 
-void HTTP::Request::setContentLength(ssize_t mContentLength)
+void HTTP::Request::setContentLength(size_t len)
 {
-  m_contentLength = mContentLength;
+  m_contentLength = len;
 }
 
 const std::chrono::system_clock& HTTP::Request::getRequestTime() const
@@ -85,7 +85,18 @@ bool HTTP::Request::isFinished()
   return false;
 }
 
-HTTP::Request::Request()
+HTTP::Request::Request() : m_contentLength(0)
+{
+
+}
+
+void HTTP::Request::addHeader(const std::string& key, const std::string& value)
+{
+  std::pair<std::string, std::string> pair = {key, value};
+  m_headers.insert(pair);
+}
+
+void HTTP::Request::response()
 {
 
 }
