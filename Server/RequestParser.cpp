@@ -41,6 +41,7 @@ HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
       if (CONTENT_SIZE == 0)
       {
         m_parseStatus = REQ_PARSE_END;
+        storage.pop(storage.getCursor());
       }
       else if (isChunked(m_request))
       {
@@ -54,9 +55,10 @@ HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
   }
   catch (std::exception& e)
   {
+    std::cerr << e.what();
     m_parseStatus = REQ_PARSE_ERROR;
   }
-
+//  m_request->display();
   if (isForce || m_parseStatus == REQ_PARSE_END || m_parseStatus == REQ_PARSE_ERROR)
   {
     HTTP::Request* ret = m_request;
@@ -68,7 +70,8 @@ HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
 
 void HTTP::RequestParser::parseStartLine(WS::Storage& storage)
 {
-  WS::Storage lineBuf(storage.subStorage(storage.getCursor(), storage.find("\r\n")));
+  auto delimPos = storage.find("\r\n", storage.getCursor());
+  WS::Storage lineBuf(storage.subStorage(0, delimPos));
               lineBuf.append((unsigned char*)"\0", 1);
   std::string lineStr((char*)lineBuf.data());
   std::stringstream stream(lineStr);
@@ -92,20 +95,20 @@ void HTTP::RequestParser::parseHeader(WS::Storage& storage)
   size_t start = 0;
   size_t end;
 
-  while (start < headerStr.size())
+  while (start < headerStr.size() - 4)
   {
     std::string key, value;
     // get key
     end = headerStr.find(DELIM, start);
     if (end == std::string::npos)
       throw (std::logic_error("header parsing failed\n"));
-    key = headerStr.substr(start, end);
+    key = headerStr.substr(start, end - start);
     start = end + 1;
     // get value
     end = headerStr.find("\r\n", start);
     if (end == std::string::npos)
       throw (std::logic_error("header parsing failed\n"));
-    value = headerStr.substr(start, end);
+    value = headerStr.substr(start + 1, end - start - 1);
     start = end + 2;
     // add header
     m_request->addHeader(key, value);

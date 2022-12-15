@@ -48,14 +48,9 @@ size_t WS::Storage::find(WS::Byte needle, size_t start) const
 
 static bool isMatched(const WS::Byte* bytes, const std::string& needle, const size_t byteSize)
 {
-  if (needle.size() < byteSize)
+  if (needle.size() > byteSize)
     return (false);
-  for (size_t idx = 0; (idx < needle.size() && idx < byteSize); ++idx)
-  {
-    if (bytes[idx] != needle[idx])
-      return (false);
-  }
-  return (true);
+  return (memcmp(bytes, needle.c_str(), needle.length()) == 0);
 }
 
 size_t WS::Storage::find(const std::string& needle) const
@@ -291,6 +286,7 @@ void WS::Storage::pop(size_t len)
     ::memmove(m_storage, &m_storage[len], (m_storageSize - len));
     m_storedSize = m_storageSize - len;
   }
+  m_cursor = 0;
 }
 
 void WS::Storage::reserve(size_t size)
