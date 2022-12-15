@@ -8,6 +8,7 @@
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
 #include "ARequest.hpp"
+#include "RequestParser.hpp"
 #include "Event.hpp"
 #include <queue>
 #include <netinet/in.h>
@@ -29,6 +30,7 @@ namespace WS
       WS::Storage m_socketSendStorage;
       WS::Storage m_fileReadStorage;
       WS::Storage m_fileWriteStorage;
+      HTTP::RequestParser m_reqHTTPParser;
       bool m_closed;
   public:
       struct sockaddr_in m_socketIn{};
