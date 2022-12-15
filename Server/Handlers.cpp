@@ -30,39 +30,43 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF) // file read done
       {
+        FileDescriptor readFD = ev->connection->getReadFd();
+        if (readFD > 0)
+        {
+          close(readFD);
+          ev->connection->setReadFd(-1);
+        }
         return ;
       }
-      handleFileReadToSend(event);
-      return ;
     }
     case EV_TYPE_WRITE_FILE:
     {
       if (event.flags & EV_EOF)
       {
+        FileDescriptor writeFD = ev->connection->getWriteFd();
+        if (writeFD > 0)
+        {
+          close(writeFD);
+          ev->connection->setWriteFd(-1);
+        }
         return ;
       }
-      handleFileWrite(event);
-      return ;
     }
     case EV_TYPE_RECEIVE_SOCKET:
     {
-      if (event.flags & EV_EOF) // connection closed
+      if (event.flags & EV_EOF)  // client closed own write socket -> still can response
       {
-        delete (ev->connection);
-        return ;
+        ::shutdown(event.ident, SHUT_RD);
+        break ;
       }
-      handleSocketReceive(event);
-      return ;
     }
     case EV_TYPE_SEND_SOCKET:
     {
-      if (event.flags & EV_EOF) // connection closed
+      if (event.flags & EV_EOF) // client closed own read socket -> can not response
       {
         delete (ev->connection);
         return ;
       }
-      handleSocketSend(event);
-      return ;
     }
     case EV_TYPE_ACCEPT_CONNECTION:
     {
@@ -71,7 +75,7 @@ void WS::handleEvent(struct kevent& event)
       return ;
     }
   }
-  // enable event
+  ev->handler(event);
 }
 
 // receive data from socket and store at connection buffer
@@ -80,17 +84,28 @@ void WS::handleSocketReceive(struct kevent& event)
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
-
   auto readSize = receiveBuffer.read(event.ident);
-  if (readSize == -1)
+
+  if (readSize == -1 && !(event.flags & EV_EOF))
   {
     delete (ev->connection);
   }
   else
   {
-    auto jobHandler = [&connection](){
-      connection.parseRequestFromStorage();
-    };
+    // if client closed socket write, response by socket residue + stored data...
+    std::function<void()> jobHandler;
+    if (event.flags & EV_EOF)
+    {
+      jobHandler = [&connection](){
+          connection.parseRequestFromStorage(true);
+      };
+    }
+    else
+    {
+      jobHandler = [&connection](){
+          connection.parseRequestFromStorage(false);
+      };
+    }
     WS::Job job(jobHandler);
     G_SERVER->attachNewJob(job);
   }

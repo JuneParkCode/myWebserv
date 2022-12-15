@@ -6,6 +6,8 @@
 #define EVENT_HPP
 
 #include <netinet/in.h>
+#include <functional>
+#include <sys/event.h>
 
 namespace WS
 {
@@ -22,8 +24,9 @@ namespace WS
     {
         EventType type;
         WS::Connection* connection;
+        std::function<void(struct kevent&)> handler;
         Event() = default;
-        Event(EventType type_, Connection* connection_);
+        Event(EventType type_, Connection* connection_, std::function<void(struct kevent&)> handler_);
     } Event;
 }
 

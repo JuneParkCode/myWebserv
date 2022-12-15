@@ -3,16 +3,17 @@
 //
 
 #include "Connection.hpp"
+#include "Handlers.hpp"
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
 
 WS::Connection::Connection() :
         m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false),
-        m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this),
-        m_socketSendEvent(EV_TYPE_SEND_SOCKET, this),
-        m_fileReadEvent(EV_TYPE_READ_FILE, this),
-        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this)
+        m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this, WS::handleSocketReceive),
+        m_socketSendEvent(EV_TYPE_SEND_SOCKET, this, WS::handleSocketSend),
+        m_fileReadEvent(EV_TYPE_READ_FILE, this, WS::handleFileReadToSend),
+        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this, WS::handleFileWrite)
 {
 }
 
@@ -21,7 +22,7 @@ WS::Connection::~Connection()
   closeConnection();
 }
 
-void WS::Connection::parseRequestFromStorage()
+void WS::Connection::parseRequestFromStorage(bool isForceParse)
 {
 }
 
