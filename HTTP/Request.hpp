@@ -43,6 +43,7 @@ namespace HTTP
       void response();
       bool isTimeout();
       bool isFinished();
+      void display() const;
       Request();
       ~Request() = default;
   };
