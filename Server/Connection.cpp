@@ -53,7 +53,7 @@ void WS::Connection::closeConnection()
     }
     delete (m_request);
     m_request = nullptr;
-    std::cerr << "connection closed\n";
+현    std::cerr << "Disconnect : " << getClientIP() << std::endl;
   }
 }
 
