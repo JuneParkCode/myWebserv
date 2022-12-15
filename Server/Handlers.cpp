@@ -38,6 +38,7 @@ void WS::handleEvent(struct kevent& event)
         }
         return ;
       }
+      break;
     }
     case EV_TYPE_WRITE_FILE:
     {
@@ -51,14 +52,15 @@ void WS::handleEvent(struct kevent& event)
         }
         return ;
       }
+      break;
     }
     case EV_TYPE_RECEIVE_SOCKET:
     {
       if (event.flags & EV_EOF)  // client closed own write socket -> still can response
       {
         ::shutdown(event.ident, SHUT_RD);
-        break ;
       }
+      break;
     }
     case EV_TYPE_SEND_SOCKET:
     {
@@ -67,11 +69,12 @@ void WS::handleEvent(struct kevent& event)
         delete (ev->connection);
         return ;
       }
+      break;
     }
     case EV_TYPE_ACCEPT_CONNECTION:
     {
       handleAcceptConnection(event);
-      G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, event.fflags, event.udata);
+      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD, event.fflags, event.udata);
       return ;
     }
   }
@@ -81,6 +84,7 @@ void WS::handleEvent(struct kevent& event)
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
+  std::cerr << "socket receive\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
@@ -114,6 +118,7 @@ void WS::handleSocketReceive(struct kevent& event)
 // send data from response send buffer
 void WS::handleSocketSend(struct kevent& event)
 {
+  std::cerr << "send handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getSocketSendStorage();
   const size_t bufferCursor = buffer.getCursor();
@@ -152,6 +157,7 @@ void WS::handleSocketSend(struct kevent& event)
 
 void WS::handleFileReadToSend(struct kevent& event)
 {
+  std::cerr << "fread handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& readBuffer = ev->connection->getFileReadStorage();
 
@@ -174,6 +180,7 @@ void WS::handleFileReadToSend(struct kevent& event)
 
 void WS::handleFileWrite(struct kevent& event)
 {
+  std::cerr << "write handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getFileWriteStorage();
   const size_t bufferCursor = buffer.getCursor();
@@ -209,7 +216,8 @@ void WS::handleAcceptConnection(struct kevent& event)
 
   if (newSocket < 0)
   {
-    std::cerr << "accept failed" << ::strerror(errno);
+    std::cerr << "accept failed : " << ::strerror(errno) << std::endl;
+    std::cerr << "socket fd : " << event.ident << std::endl;
     return ;
   }
   else
@@ -228,7 +236,7 @@ void WS::handleAcceptConnection(struct kevent& event)
     {
       throw (std::runtime_error("Socket opt failed\n"));
     }
-    std::cerr << "Connect : " << newConnection->getClientIP() << std::endl;
-    G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD | EV_ENABLE, 0, &newConnection->m_socketRecvEvent);
+    std::cout << "Connect : " << newConnection->getClientIP() << std::endl;
+    G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD, 0, &newConnection->m_socketRecvEvent);
   }
 }
