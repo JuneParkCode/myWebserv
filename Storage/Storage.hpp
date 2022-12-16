@@ -8,7 +8,7 @@
 #include <string>
 #include <ostream>
 
-#define BUFFER_SIZE (16 * 1024)
+#define BUFFER_SIZE (96 * 1024)
 
 namespace WS
 {

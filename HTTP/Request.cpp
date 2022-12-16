@@ -103,18 +103,18 @@ void HTTP::Request::addHeader(const std::string& key, const std::string& value)
 
 void HTTP::Request::response()
 {
+
 }
 
 void HTTP::Request::display() const
 {
+  std::cerr << "display request..\n";
   std::cerr << m_method << " " << m_URL << " " << m_version << std::endl;
   for (auto it = m_headers.cbegin(); it != m_headers.cend(); ++it)
   {
     std::cerr << "----------------------------------------------\n";
     std::cerr  << "(" << it->first << "):(" << it->second << ")\n";
   }
-  std::cerr << "BODY\n";
-  std::cerr << m_body << std::endl;
   std::cerr << "CONTENT_LENGTH\n";
   std::cerr << m_contentLength << std::endl;
 }

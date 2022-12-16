@@ -3,11 +3,14 @@
 //
 
 #include "Connection.hpp"
+#include "Server.hpp"
 #include "Handlers.hpp"
 #include <sys/event.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
+
+extern WS::Server* G_SERVER;
 
 WS::Connection::Connection() :
         m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false),
@@ -23,9 +26,9 @@ WS::Connection::~Connection()
   closeConnection();
 }
 
-void WS::Connection::parseRequestFromStorage(struct kevent event, bool isForceParse)
+void WS::Connection::parseRequestFromStorage(struct kevent event)
 {
-  m_request = m_reqHTTPParser.parse(event, m_socketRecvStorage, isForceParse);
+  m_request = m_reqHTTPParser.parse(event, m_socketRecvStorage);
   if (m_request != nullptr)
   {
     m_request->response();

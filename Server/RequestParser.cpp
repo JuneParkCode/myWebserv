@@ -20,7 +20,7 @@ static bool isChunked(HTTP::Request* req)
           && transferEncoding->second.find("chunked") != std::string::npos);
 }
 
-HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& storage, bool isForce)
+HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& storage)
 {
   if (m_request == nullptr)
     m_request = new HTTP::Request();
@@ -42,24 +42,23 @@ HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& sto
     {
       const size_t CONTENT_SIZE = m_request->getContentLength();
 
-      if (CONTENT_SIZE == 0)
-      {
-        m_parseStatus = REQ_PARSE_END;
-        storage.pop(storage.getCursor());
-      }
-      else if (isChunked(m_request))
+      if (isChunked(m_request))
       {
         while (m_parseStatus == REQ_PARSE_BODY && !storage.empty())
           parseChunkedBody(storage);
         if (m_parseStatus == REQ_PARSE_BODY && storage.empty()) // get socket recv again..
           G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, event.udata);
       }
+      else if (CONTENT_SIZE == 0)
+      {
+        m_parseStatus = REQ_PARSE_END;
+        storage.pop(storage.getCursor());
+      }
       else // not chunked
       {
         parseBody(storage);
         if (m_parseStatus == REQ_PARSE_BODY && storage.empty()) // get socket recv again..
           G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, event.udata);
-
       }
     }
   }
@@ -69,12 +68,16 @@ HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& sto
     m_parseStatus = REQ_PARSE_ERROR;
     m_request->setParseError();
   }
-  if (isForce || m_parseStatus == REQ_PARSE_END || m_parseStatus == REQ_PARSE_ERROR)
+  if (m_parseStatus == REQ_PARSE_ERROR)
+    std::cerr << "PARSE ERR\n";
+  if (m_parseStatus == REQ_PARSE_END)
   {
     HTTP::Request* ret = m_request;
     m_request->setContentLength(m_request->getBody().size());
     m_request->display(); // std::cerr
     m_request = nullptr;
+    // explicitly..
+    G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_DISABLE, 0, event.udata);
     return (ret);
   }
   return (nullptr);
@@ -83,10 +86,10 @@ HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& sto
 bool HTTP::RequestParser::checkVersion(const std::string& version)
 {
   if (::strncmp(version.c_str(), "HTTP", 4) != 0)
-    throw (std::logic_error("start line parsing failed\n"));
-  auto httpVersion = std::stod(version.substr(6));
-
-  return (httpVersion <= 1.1);
+    return (false);
+  auto httpVersion = std::stod(version.substr(5));
+  std::cerr << "httpVersion : " << httpVersion << std::endl;
+  return (0.9 <= httpVersion && httpVersion <= 1.1);
 }
 
 void HTTP::RequestParser::parseStartLine(WS::Storage& storage)
@@ -141,7 +144,7 @@ void HTTP::RequestParser::parseHeader(WS::Storage& storage)
   if (content_length == m_request->getHeaders().end())
     m_request->setContentLength(0);
   else
-    m_request->setContentLength(std::stoi(content_length->second));
+    m_request->setContentLength(std::stoll(content_length->second));
 }
 
 void HTTP::RequestParser::parseBody(WS::Storage& storage)
@@ -214,5 +217,5 @@ HTTP::RequestParser::RequestParser(): m_request(nullptr), m_parseStatus(REQ_PARS
 
 HTTP::RequestParser::~RequestParser()
 {
-
+  delete (m_request);
 }

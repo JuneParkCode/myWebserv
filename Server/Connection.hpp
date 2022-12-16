@@ -39,7 +39,7 @@ namespace WS
       Event m_fileReadEvent;
       Event m_fileWriteEvent;
   public:
-      void parseRequestFromStorage(struct kevent event, bool isForceParse);
+      void parseRequestFromStorage(struct kevent event);
       void setSocketFD(FileDescriptor fd);
       void closeConnection(); // close connection and delete jobs from thread Queue
       ARequest* getRequest();

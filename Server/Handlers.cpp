@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <iostream>
 
-#define BUFFER_SIZE (16 * 1024)
+#define BUFFER_SIZE (96 * 1024)
 
 extern WS::Server* G_SERVER;
 
@@ -59,8 +59,8 @@ void WS::handleEvent(struct kevent& event)
       if (event.flags & EV_EOF)  // client closed own write socket -> still can response
       {
         ::shutdown(event.ident, SHUT_RD);
+        return ;
       }
-      break;
     }
     case EV_TYPE_SEND_SOCKET:
     {
@@ -74,7 +74,7 @@ void WS::handleEvent(struct kevent& event)
     case EV_TYPE_ACCEPT_CONNECTION:
     {
       handleAcceptConnection(event);
-      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD, event.fflags, event.udata);
+      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD | EV_ENABLE, event.fflags, event.udata);
       return ;
     }
   }
@@ -84,13 +84,13 @@ void WS::handleEvent(struct kevent& event)
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
-  std::cerr << "socket receive\n";
+//  std::cerr << "socket receive\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
   auto readSize = receiveBuffer.read(event.ident);
 
-  if (readSize == -1 && !(event.flags & EV_EOF))
+  if (readSize == -1)
   {
     delete (ev->connection);
   }
@@ -98,18 +98,9 @@ void WS::handleSocketReceive(struct kevent& event)
   {
     // if client closed socket write, response by socket residue + stored data...
     std::function<void()> jobHandler;
-    if (event.flags & EV_EOF)
-    {
-      jobHandler = [&connection, event](){
-          connection.parseRequestFromStorage(event, true);
-      };
-    }
-    else
-    {
-      jobHandler = [&connection, event](){
-          connection.parseRequestFromStorage(event, false);
-      };
-    }
+    jobHandler = [&connection, event](){
+        connection.parseRequestFromStorage(event);
+    };
     WS::Job job(jobHandler);
     G_SERVER->attachNewJob(job);
   }
