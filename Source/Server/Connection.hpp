@@ -8,7 +8,7 @@
 #include "HTTPDefinitions.hpp"
 #include "Response.hpp"
 #include "ARequest.hpp"
-#include "RequestParser.hpp"
+#include "../../deprecated/RequestParser.hpp"
 #include "Event.hpp"
 #include <queue>
 #include <netinet/in.h>

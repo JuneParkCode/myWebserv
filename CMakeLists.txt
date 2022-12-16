@@ -8,18 +8,13 @@ set(CMAKE_CXX_STANDARD 11)
 #add_link_options(-g3 -fsanitize=address)
 
 set(SOURCE_FILES
-        Event/Event.cpp
-        Storage/Storage.cpp
-        HTTP/Request.cpp
-        HTTP/Response.cpp
-        Server/Connection.cpp
-        Server/Handlers.cpp
-        Server/Location.cpp
-        Server/Server.cpp
-        Server/VirtualServer.cpp
-        ThreadPool/ThreadPool.cpp
-        Server/RequestParser.cpp
-        Server/RequestParser.hpp
+        Source/Event/Event.cpp
+        Source/Server/Connection.cpp
+        Source/Server/Handlers.cpp
+        Source/Server/Location.cpp
+        Source/Server/Server.cpp
+        Source/Server/VirtualServer.cpp
+        Source/ThreadPool/ThreadPool.cpp
         webserv.cpp)
 
 add_executable(miniWebserv
@@ -28,10 +23,10 @@ add_executable(miniWebserv
 
 target_include_directories(miniWebserv
         PUBLIC
-        Event
-        HTTP
-        Storage
-        Server
-        ThreadPool
-        ARequest
+        Source/Event
+        deprecated/HTTP
+        deprecated/Storage
+        Source/Server
+        Source/ThreadPool
+        Source/ARequest
         )
