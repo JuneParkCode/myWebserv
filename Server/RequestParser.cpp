@@ -3,20 +3,24 @@
 //
 
 #include "RequestParser.hpp"
+#include "Server.hpp"
+#include <sys/event.h>
 #include <sstream>
 
 #define DELIMITER "\r\n\r\n"
 
+extern WS::Server* G_SERVER;
+
 static bool isChunked(HTTP::Request* req)
 {
   auto& headers = req->getHeaders();
-  auto transferEncoding = headers.find("Transfer-encoding");
+  auto transferEncoding = headers.find("Transfer-Encoding");
 
   return (transferEncoding != headers.end()
           && transferEncoding->second.find("chunked") != std::string::npos);
 }
 
-HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
+HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& storage, bool isForce)
 {
   if (m_request == nullptr)
     m_request = new HTTP::Request();
@@ -45,11 +49,17 @@ HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
       }
       else if (isChunked(m_request))
       {
-        parseChunkedBody(storage);
+        while (m_parseStatus == REQ_PARSE_BODY && !storage.empty())
+          parseChunkedBody(storage);
+        if (m_parseStatus == REQ_PARSE_BODY && storage.empty()) // get socket recv again..
+          G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, event.udata);
       }
       else // not chunked
       {
         parseBody(storage);
+        if (m_parseStatus == REQ_PARSE_BODY && storage.empty()) // get socket recv again..
+          G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, event.udata);
+
       }
     }
   }
@@ -57,20 +67,31 @@ HTTP::Request* HTTP::RequestParser::parse(WS::Storage& storage, bool isForce)
   {
     std::cerr << e.what();
     m_parseStatus = REQ_PARSE_ERROR;
+    m_request->setParseError();
   }
-//  m_request->display();
   if (isForce || m_parseStatus == REQ_PARSE_END || m_parseStatus == REQ_PARSE_ERROR)
   {
     HTTP::Request* ret = m_request;
+    m_request->setContentLength(m_request->getBody().size());
+    m_request->display(); // std::cerr
     m_request = nullptr;
     return (ret);
   }
   return (nullptr);
 }
 
+bool HTTP::RequestParser::checkVersion(const std::string& version)
+{
+  if (::strncmp(version.c_str(), "HTTP", 4) != 0)
+    throw (std::logic_error("start line parsing failed\n"));
+  auto httpVersion = std::stod(version.substr(6));
+
+  return (httpVersion <= 1.1);
+}
+
 void HTTP::RequestParser::parseStartLine(WS::Storage& storage)
 {
-  auto delimPos = storage.find("\r\n", storage.getCursor());
+  size_t delimPos = storage.find("\r\n", storage.getCursor());
   WS::Storage lineBuf(storage.subStorage(0, delimPos));
               lineBuf.append((unsigned char*)"\0", 1);
   std::string lineStr((char*)lineBuf.data());
@@ -78,17 +99,19 @@ void HTTP::RequestParser::parseStartLine(WS::Storage& storage)
   std::string method, url, version;
 
   stream >> method >> url >> version;
-  if (method.empty() || url.empty() || version.empty())
+  if (method.empty() || url.empty() || version.empty() || !checkVersion(version))
     throw (std::logic_error("start line parsing failed\n"));
   m_request->setMethod(method);
   m_request->setUrl(url);
   m_request->setVersion(version);
-  storage.setCursor(lineBuf.size() + 1); // - '\0' + "\r\n"
+  storage.setCursor(lineBuf.size()); // - '\0' + "\r\n"
 }
 
 void HTTP::RequestParser::parseHeader(WS::Storage& storage)
 {
-  WS::Storage headerBuf(storage.subStorage(storage.getCursor(), storage.find(DELIMITER)));
+  const size_t CURSOR = storage.getCursor();
+  const size_t DELIMITER_POS = storage.find(DELIMITER, CURSOR);
+  WS::Storage headerBuf(storage.subStorage(CURSOR, DELIMITER_POS - CURSOR + 2)); // + /r/n
               headerBuf.append((unsigned char*)"\0", 1);
   std::string headerStr((char*)headerBuf.data());
   const char DELIM = ':';
@@ -124,7 +147,7 @@ void HTTP::RequestParser::parseHeader(WS::Storage& storage)
 void HTTP::RequestParser::parseBody(WS::Storage& storage)
 {
   const size_t CONTENT_LENGTH = m_request->getContentLength();
-  auto body = m_request->getBody();
+  WS::Storage& body = m_request->getBody();
        body.reserve(CONTENT_LENGTH);
 
   if (CONTENT_LENGTH == 0)
@@ -145,21 +168,51 @@ void HTTP::RequestParser::parseBody(WS::Storage& storage)
 
 void HTTP::RequestParser::parseChunkedBody(WS::Storage& storage)
 {
-  auto body = m_request->getBody();
-       body.reserve(BUFFER_SIZE);
+  auto& body = m_request->getBody();
+        body.reserve(BUFFER_SIZE);
   size_t start = storage.getCursor();
-  size_t end;
 
-  while (start < storage.size())
+  if (m_chunkSize == 0)
   {
-    end = storage.find(DELIMITER, start);
-    std::string sizeStr((const char*) (storage.subStorage(start, end - start).data()));
-    size_t size = std::stoi(sizeStr);
-    start = end + 2;
-    // read..
-    body.append(&storage.data()[start], size);
-    start += size + 4; // + delim size..
+    size_t delimPos = storage.find("\r\n", start);
+    if (delimPos - start >= 20)
+      throw (std::logic_error("invalid body chunk\n"));
+    // get chunk size string
+    char chunkSizeStr[20] = {0};
+    for (size_t idx = start; (idx < (start + sizeof(chunkSizeStr) - 1) && idx < delimPos); ++idx)
+      chunkSizeStr[idx - start] = (char)storage[idx];
+    // string to size
+    char *p;
+    size_t chunkSize = ::strtol(chunkSizeStr, &p, 16);
+    m_chunkSize = chunkSize;
+    if (chunkSize == 0)
+    {
+      m_parseStatus = REQ_PARSE_END;
+      return ;
+    }
+    storage.setCursor(delimPos + 2);
   }
-  storage.setCursor(start);
-  storage.pop(storage.getCursor() + 1);
+  const size_t STORAGE_REMAIN_SIZE = storage.size() - storage.getCursor();
+  if (m_chunkSize > STORAGE_REMAIN_SIZE) // use all storage data
+  {
+    body.append(&(storage.data())[storage.getCursor()], STORAGE_REMAIN_SIZE);
+    storage.clear();
+    m_chunkSize -= STORAGE_REMAIN_SIZE;
+  }
+  else // partial read
+  {
+    body.append(&(storage.data())[storage.getCursor()], m_chunkSize);
+    storage.setCursor(storage.getCursor() + m_chunkSize + 2); // \r\n
+    m_chunkSize = 0;
+  }
+}
+
+HTTP::RequestParser::RequestParser(): m_request(nullptr), m_parseStatus(REQ_PARSE_START), m_chunkSize(0)
+{
+
+}
+
+HTTP::RequestParser::~RequestParser()
+{
+
 }

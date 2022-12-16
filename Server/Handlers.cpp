@@ -100,14 +100,14 @@ void WS::handleSocketReceive(struct kevent& event)
     std::function<void()> jobHandler;
     if (event.flags & EV_EOF)
     {
-      jobHandler = [&connection](){
-          connection.parseRequestFromStorage(true);
+      jobHandler = [&connection, event](){
+          connection.parseRequestFromStorage(event, true);
       };
     }
     else
     {
-      jobHandler = [&connection](){
-          connection.parseRequestFromStorage(false);
+      jobHandler = [&connection, event](){
+          connection.parseRequestFromStorage(event, false);
       };
     }
     WS::Job job(jobHandler);

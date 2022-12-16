@@ -35,9 +35,9 @@ const std::map<std::string, std::string>& HTTP::Request::getHeaders() const
   return m_headers;
 }
 
-const WS::Storage& HTTP::Request::getBody() const
+WS::Storage& HTTP::Request::getBody()
 {
-  return m_body;
+  return (m_body);
 }
 
 void HTTP::Request::setBody(const WS::Storage& mBody)
@@ -75,6 +75,11 @@ void HTTP::Request::setResponse(const HTTP::Response& mResponse)
   m_response = mResponse;
 }
 
+void HTTP::Request::setParseError()
+{
+  m_parseError = true;
+}
+
 bool HTTP::Request::isTimeout()
 {
   return false;
@@ -85,7 +90,7 @@ bool HTTP::Request::isFinished()
   return false;
 }
 
-HTTP::Request::Request() : m_contentLength(0)
+HTTP::Request::Request() : m_contentLength(0), m_parseError(false)
 {
 
 }
@@ -98,7 +103,6 @@ void HTTP::Request::addHeader(const std::string& key, const std::string& value)
 
 void HTTP::Request::response()
 {
-  // create response..
 }
 
 void HTTP::Request::display() const
@@ -109,5 +113,8 @@ void HTTP::Request::display() const
     std::cerr << "----------------------------------------------\n";
     std::cerr  << "(" << it->first << "):(" << it->second << ")\n";
   }
-  std::cerr << m_body;
+  std::cerr << "BODY\n";
+  std::cerr << m_body << std::endl;
+  std::cerr << "CONTENT_LENGTH\n";
+  std::cerr << m_contentLength << std::endl;
 }

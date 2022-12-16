@@ -118,6 +118,7 @@ bool WS::Storage::empty() const
 void WS::Storage::clear()
 {
   m_storedSize = 0;
+  m_cursor = 0;
 }
 
 void WS::Storage::clearAll()
@@ -268,7 +269,7 @@ WS::Storage WS::Storage::subStorage(size_t start, size_t len) const
     newStorage.reserve(len + 1);
     ::memcpy(newStorage.m_storage, &m_storage[start], len);
     newStorage.m_storedSize = len;
-    newStorage.m_storage[m_storedSize] = 0; // for stringfy..
+    newStorage.append((WS::Byte*)"\0", 1);
     return (newStorage);
   }
 }

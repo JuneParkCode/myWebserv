@@ -6,6 +6,7 @@
 #define REQUESTPARSER_HPP
 
 #include "Request.hpp"
+#include <sys/event.h>
 
 namespace HTTP
 {
@@ -22,13 +23,17 @@ namespace HTTP
   private:
       ParseStatus m_parseStatus;
       HTTP::Request* m_request;
+      size_t m_chunkSize;
   private:
       void parseStartLine(WS::Storage& storage);
       void parseHeader(WS::Storage& storage);
       void parseBody(WS::Storage& storage);
       void parseChunkedBody(WS::Storage& storage);
+      static bool checkVersion(const std::string& version);
   public:
-      HTTP::Request* parse(WS::Storage& storage, bool isForce);
+      HTTP::Request* parse(struct kevent& event, WS::Storage& storage, bool isForce);
+      RequestParser();
+      ~RequestParser();
   };
 }
 

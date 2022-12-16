@@ -4,6 +4,7 @@
 
 #include "Connection.hpp"
 #include "Handlers.hpp"
+#include <sys/event.h>
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <iostream>
@@ -22,8 +23,13 @@ WS::Connection::~Connection()
   closeConnection();
 }
 
-void WS::Connection::parseRequestFromStorage(bool isForceParse)
+void WS::Connection::parseRequestFromStorage(struct kevent event, bool isForceParse)
 {
+  m_request = m_reqHTTPParser.parse(event, m_socketRecvStorage, isForceParse);
+  if (m_request != nullptr)
+  {
+    m_request->response();
+  }
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)
@@ -53,7 +59,7 @@ void WS::Connection::closeConnection()
     }
     delete (m_request);
     m_request = nullptr;
-현    std::cerr << "Disconnect : " << getClientIP() << std::endl;
+    std::cerr << "Disconnect : " << getClientIP() << std::endl;
   }
 }
 

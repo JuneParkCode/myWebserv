@@ -22,6 +22,7 @@ namespace HTTP
       std::string m_URL;
       std::string m_version;
       size_t m_contentLength;
+      bool m_parseError;
   public:
       const std::string& getMethod() const;
       void setMethod(const std::string& mMethod);
@@ -30,12 +31,13 @@ namespace HTTP
       const std::string& getVersion() const;
       void setVersion(const std::string& mVersion);
       const std::map<std::string, std::string>& getHeaders() const;
-      const WS::Storage& getBody() const;
+      WS::Storage& getBody();
       void setBody(const WS::Storage& mBody);
       const std::chrono::system_clock& getRequestTime() const;
       void setRequestTime(const std::chrono::system_clock& mRequestTime);
       const Response& getResponse() const;
       void setResponse(const Response& mResponse);
+      void setParseError();
   public:
       void addHeader(const std::string& key, const std::string& value);
       size_t getContentLength() const;
