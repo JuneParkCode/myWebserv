@@ -5,6 +5,7 @@
 #include "Connection.hpp"
 #include "Server.hpp"
 #include "Handlers.hpp"
+#include "RequestProcessor.hpp"
 #include <sys/event.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -33,11 +34,16 @@ WS::Connection::~Connection()
   closeConnection();
 }
 
+// FIXME : 현재는 HTTP만 받지만 다른 프로토콜도 받을 수 있게 만들어보자.
 void WS::Connection::parseRequestFromStorage(struct kevent event)
 {
-  m_request = m_reqeustParser.parse(event, m_socketRecvStorage);
+  auto* httpRequest = m_reqeustParser.parse(event, m_socketRecvStorage);
+  m_request = httpRequest;
   if (m_request != nullptr)
-    m_request->response();
+  {
+    auto response = HTTP::RequestProcessor::createResponse(httpRequest, this);
+    response->send();
+  }
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)
