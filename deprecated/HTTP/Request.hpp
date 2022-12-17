@@ -1,10 +1,10 @@
 #ifndef REQUEST_HPP
 #define REQUEST_HPP
 
-#include "Storage.hpp"
-#include "HTTPDefinitions.hpp"
-#include "Response.hpp"
-#include "ARequest.hpp"
+//#include "Storage.hpp"
+//#include "../../Source/HTTP/HTTPDefinitions.hpp"
+//#include "Response.hpp"
+//#include "ARequest.hpp"
 #include <map>
 #include <iostream>
 #include <chrono>

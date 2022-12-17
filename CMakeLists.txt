@@ -15,7 +15,10 @@ set(SOURCE_FILES
         Source/Server/Server.cpp
         Source/Server/VirtualServer.cpp
         Source/ThreadPool/ThreadPool.cpp
-        webserv.cpp)
+        Source/Storage/Storage.cpp
+        webserv.cpp
+        Source/HTTP/Request.cpp
+        Source/HTTP/RequestParser.cpp)
 
 add_executable(miniWebserv
         ${SOURCE_FILES}
@@ -24,9 +27,9 @@ add_executable(miniWebserv
 target_include_directories(miniWebserv
         PUBLIC
         Source/Event
-        deprecated/HTTP
-        deprecated/Storage
         Source/Server
         Source/ThreadPool
         Source/ARequest
+        Source/Storage
+        Source/HTTP
         )

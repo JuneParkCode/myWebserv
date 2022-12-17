@@ -1,7 +1,7 @@
 #ifndef RESPONSE_HPP
 #define RESPONSE_HPP
 
-#include "HTTPDefinitions.hpp"
+//#include "../../Source/HTTP/HTTPDefinitions.hpp"
 #include "Storage.hpp"
 #include <string>
 #include <map>
