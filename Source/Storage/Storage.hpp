@@ -2,13 +2,12 @@
 #define STORAGE_HPP
 
 // STORAGE
-// std::string의 경우 binary format의 데이터를 못받는 문제가 있다.
-// 이런 문제를 해결하고자, std::string 처럼 heap 을 이용하며 자유롭게 사용할 수 있는 구조를 만듦.
-
+// std::string의 경우 binary format의 데이터를 제대로 못받는 문제가 있다. (.data() 쓰면 되긴 함)
+// 보다 더 효율적으로 버퍼를 사용하고자 해당 구조를 만듦
 #include <string>
 #include <ostream>
 
-#define BUFFER_SIZE (96 * 1024)
+#define BUFFER_SIZE (10 * 1000 * 1024)
 
 namespace WS
 {
@@ -57,6 +56,7 @@ namespace WS
         Storage& operator=(CString rhs);
         Byte& operator[](size_t pos) const;
         Storage();
+        Storage(size_t storageSize);
         Storage(const Storage& storage);
         Storage(Storage&& storage) noexcept ;
         ~Storage();

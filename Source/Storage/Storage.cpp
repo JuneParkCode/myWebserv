@@ -27,6 +27,14 @@ WS::Storage::Storage():
 {
 }
 
+WS::Storage::Storage(size_t storageSize):
+        m_storage(new Byte[storageSize]),
+        m_storedSize(0),
+        m_storageSize(storageSize),
+        m_cursor(0)
+{
+}
+
 WS::Storage::~Storage()
 {
   delete[] (m_storage);
@@ -135,9 +143,9 @@ void WS::Storage::append(const WS::Byte* buf, size_t size)
   if (buf == nullptr || size == 0)
     return ;
   const size_t NEW_STORED_SIZE = m_storedSize + size;
-  const size_t NEW_STORAGE_SIZE = m_storageSize + size;
 
-  reserve(NEW_STORAGE_SIZE);
+  if (NEW_STORED_SIZE > m_storageSize)
+    reserve(m_storageSize * 2);
   ::memcpy(&m_storage[m_storedSize], buf, size);
   m_storedSize = NEW_STORED_SIZE;
 }
@@ -281,21 +289,23 @@ void WS::Storage::pop(size_t len)
   if (m_storedSize <= len)
   {
     m_storedSize = 0;
+    m_cursor = 0;
   }
   else
   {
     ::memmove(m_storage, &m_storage[len], (m_storageSize - len));
     m_storedSize = m_storageSize - len;
+    m_cursor -= len;
   }
-  m_cursor = 0;
 }
-
+#include <iostream>
 void WS::Storage::reserve(size_t size)
 {
-  if (m_storageSize > size || size == 0)
+  if (m_storageSize >= size || size == 0)
     return ;
   else
   {
+    std::cout << "reserve malloced memory\n" << (double ) m_storageSize / (1000 * 1024) << " + " << size  / (1000 * 1024) << std::endl;
     auto newStorage = new WS::Byte[size];
     size_t temp = m_storedSize;
 
@@ -324,7 +334,8 @@ void WS::Storage::setCursor(size_t cursor)
 
 ssize_t WS::Storage::read(ssize_t fd)
 {
-  reserve(BUFFER_SIZE + m_storedSize);
+  if (m_storageSize < BUFFER_SIZE + m_storedSize)
+    reserve(m_storageSize * 2);
   ssize_t readSize = ::read(fd, &m_storage[m_storedSize], BUFFER_SIZE);
 
   if (readSize > 0)
