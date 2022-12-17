@@ -41,7 +41,7 @@ namespace HTTP
       void parseRequestBody(WS::Storage& buffer);
       void init();
   public:
-      WS::ARequest* parse(struct kevent& event, WS::Storage& buffer);
+      Request* parse(struct kevent& event, WS::Storage& buffer);
       RequestParser(WS::Connection* connection);
       ~RequestParser();
   };

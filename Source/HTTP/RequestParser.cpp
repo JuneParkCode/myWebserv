@@ -4,6 +4,7 @@
 
 #include "RequestParser.hpp"
 #include "Server.hpp"
+#include "RequestProcessor.hpp"
 #include "Connection.hpp"
 #include <sstream>
 #include <iostream>
@@ -33,8 +34,6 @@ void HTTP::RequestParser::parseRequestLine(std::istringstream& stream)
   requestLine >> method >> path >> version;
   if (line.empty() || method.empty() || path.empty() || version. empty())
     throw (std::logic_error("Request line parse failed\n"));
-  if (version != "HTTP/1.1" || version == "HTTP/0.9") // check version
-    throw (std::logic_error("Not supported version\n"));
   m_processingRequest->setRequestLine(method, path, version);
   m_parseStatus = REQ_PARSE_HEADER;
 }
@@ -43,7 +42,6 @@ void HTTP::RequestParser::parseRequestLine(std::istringstream& stream)
 void HTTP::RequestParser::parseHeader(std::istringstream& stream)
 {
   std::string line;
-
   //[key]: [value]\r\n
   while (std::getline(stream, line) && line != "\r")
   {
@@ -57,10 +55,17 @@ void HTTP::RequestParser::parseHeader(std::istringstream& stream)
     m_processingRequest->addHeader(key, value);
   }
   m_processingRequest->setContentLength();
-  if (m_processingRequest->getContentLength() > 0)
+  // check request header
+  const auto CONTENT_LENGTH = m_processingRequest->getContentLength();
+  const auto HEADER_STATUS_CODE = HTTP::RequestProcessor::checkRequest(m_processingRequest, m_connection);
+  if (HEADER_STATUS_CODE >= 400)
   {
-    m_processingRequest->getBody().reserve(m_processingRequest->getContentLength()); // reserve it...
+    m_processingRequest->setError(HEADER_STATUS_CODE);
+    m_parseStatus = REQ_PARSE_ERROR;
+    return ;
   }
+  if (CONTENT_LENGTH > 0)
+      m_processingRequest->getBody().reserve(CONTENT_LENGTH); // reserve it...
   m_parseStatus = REQ_PARSE_BODY;
 }
 
@@ -110,11 +115,18 @@ void HTTP::RequestParser::parseChunkedBody(WS::Storage& buffer)
     if (bufferRemainSize)
       parseChunkedBody(buffer);
   }
+  // check payload
+  auto requestStatus = HTTP::RequestProcessor::checkPayload(nullptr, body.size());
+  if (requestStatus >= 400)
+  {
+    m_processingRequest->setError(requestStatus);
+    throw (std::logic_error("Payload too large"));
+  }
 }
-//4680440650
+
 void HTTP::RequestParser::parseCommonBody(WS::Storage& buffer)
 {
-  const auto CURSOR_POS = buffer.getCursor();
+  const size_t CURSOR_POS = buffer.getCursor();
   const size_t CONTENT_LENGTH = m_processingRequest->getContentLength();
   WS::Storage& body = m_processingRequest->getBody();
                body.reserve(CONTENT_LENGTH);
@@ -144,29 +156,37 @@ void HTTP::RequestParser::parseRequestBody(WS::Storage& buffer)
 }
 
 // stream 을 사용할 경우, 이를 복사하는데 분명히 시간이 들어간다. body는 buffer를 이용하자.
-WS::ARequest* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& buffer)
+HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& buffer)
 {
   if (buffer.empty())
     return (nullptr);
   if (this->m_processingRequest == nullptr)
     this->m_processingRequest = new HTTP::Request();
-  if (this->m_parseStatus == REQ_PARSE_START)
-    parseRequestHead(buffer);
-  if (this->m_parseStatus == REQ_PARSE_BODY)
+  // parse start
+  try
   {
-    parseRequestBody(buffer);
-    if (m_parseStatus == REQ_PARSE_BODY) // recv again...
+    if (this->m_parseStatus == REQ_PARSE_START)
+      parseRequestHead(buffer);
+    if (this->m_parseStatus == REQ_PARSE_BODY)
     {
-      G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, 0, event.udata);
+      parseRequestBody(buffer);
+      if (m_parseStatus == REQ_PARSE_BODY) // recv again...
+        G_SERVER->attachEvent(event.ident, event.filter, EV_ENABLE, 0, event.udata);
+      else
+        m_processingRequest->setContentLength();
     }
-    else
-      m_processingRequest->setContentLength();
   }
+  catch (std::exception& e)
+  {
+    std::cerr << e.what();
+  }
+  // check result..
   if (this->m_parseStatus == REQ_PARSE_ERROR)
   {
     auto* ret = m_processingRequest;
-    ret->setError();
 
+    if (ret->m_errorCode == ST_ERROR)
+      ret->setError(ST_BAD_REQUEST);
     init();
     return (ret);
   }
@@ -175,10 +195,12 @@ WS::ARequest* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& buff
     auto* ret = m_processingRequest;
 
     init();
+    // test 필요...
     buffer.pop(ret->getBody().size());
     std::cerr << buffer.size() << std::endl;
     return (ret);
   }
+  // parse not ended...
   return (nullptr);
 }
 
@@ -202,3 +224,4 @@ HTTP::RequestParser::~RequestParser()
     delete (m_processingRequest);
   init();
 }
+

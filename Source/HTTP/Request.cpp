@@ -53,9 +53,10 @@ void HTTP::Request::setContentLength(size_t len)
   m_contentLength = len;
 }
 
-void HTTP::Request::setError()
+void HTTP::Request::setError(HTTP::StatusCode statusCode)
 {
   m_isError = true;
+  m_errorCode = statusCode;
 }
 
 void HTTP::Request::setRequestLine(const std::string& method, const std::string& path, const std::string& version)
@@ -67,7 +68,7 @@ void HTTP::Request::setRequestLine(const std::string& method, const std::string&
 
 void HTTP::Request::response()
 {
-  display();
+  display(); // for test
 }
 
 bool HTTP::Request::isChunked() const
@@ -89,7 +90,8 @@ void HTTP::Request::addHeader(const std::string& key, const std::string& value)
 HTTP::Request::Request() noexcept:
   m_contentLength(0),
   m_isError(false),
-  m_baseTime(time(nullptr))
+  m_baseTime(time(nullptr)),
+  m_errorCode(ST_ERROR)
 {
 }
 
@@ -111,4 +113,9 @@ double HTTP::Request::getThroughPut() const
   auto runTime = (double)(now - m_baseTime);
 
   return ((m_body.size() / runTime) / (1000 * 1024)); // by MB
+}
+
+bool HTTP::Request::isErrorRequest() const
+{
+  return (m_isError);
 }

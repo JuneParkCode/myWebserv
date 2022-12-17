@@ -7,12 +7,14 @@
 
 #include "ARequest.hpp"
 #include "Storage.hpp"
+#include "HTTPDefinitions.hpp"
 #include <string>
 #include <unordered_map> // hash map
 #include <ctime>
 
 namespace HTTP
 {
+  class Response;
   class Request : public WS::ARequest
   {
   private:
@@ -21,10 +23,12 @@ namespace HTTP
       std::string m_version;
       std::unordered_map<std::string, std::string> m_headers;
       WS::Storage m_body;
+      HTTP::Response* m_response;
       size_t m_contentLength;
       ::time_t m_baseTime;
       bool m_isError;
   public:
+      HTTP::StatusCode m_errorCode;
       // for test
       void display() const;
       WS::Storage& getBody();
@@ -35,7 +39,8 @@ namespace HTTP
       size_t getContentLength() const;
       void setContentLength();
       void setContentLength(size_t len);
-      void setError();
+      void setError(HTTP::StatusCode statusCode);
+      bool isErrorRequest() const;
       void setRequestLine(const std::string& method, const std::string& path, const std::string& version);
       void response() override;
       bool isChunked() const;
