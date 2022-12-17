@@ -6,9 +6,9 @@
 #define CONNECTION_HPP
 
 #include "HTTPDefinitions.hpp"
-#include "Response.hpp"
 #include "ARequest.hpp"
-#include "../../deprecated/RequestParser.hpp"
+#include "RequestParser.hpp"
+#include "Storage.hpp"
 #include "Event.hpp"
 #include <queue>
 #include <netinet/in.h>
@@ -25,15 +25,15 @@ namespace WS
       FileDescriptor m_socketFD;
       FileDescriptor m_readFD;
       FileDescriptor m_writeFD;
-      WS::ARequest* m_request;
+      WS::ARequest* m_request; // current processing request
       WS::Storage m_socketRecvStorage;
       WS::Storage m_socketSendStorage;
       WS::Storage m_fileReadStorage;
       WS::Storage m_fileWriteStorage;
-      HTTP::RequestParser m_reqHTTPParser;
       bool m_closed;
   public:
       struct sockaddr_in m_socketIn{};
+      HTTP::RequestParser m_reqeustParser;
       Event m_socketRecvEvent;
       Event m_socketSendEvent;
       Event m_fileReadEvent;
@@ -41,7 +41,7 @@ namespace WS
   public:
       void parseRequestFromStorage(struct kevent event);
       void setSocketFD(FileDescriptor fd);
-      void closeConnection(); // close connection and delete jobs from thread Queue
+      void closeConnection();
       ARequest* getRequest();
       WS::Storage& getSocketReceiveStorage();
       WS::Storage& getSocketSendStorage();

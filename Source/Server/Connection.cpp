@@ -12,12 +12,19 @@
 
 extern WS::Server* G_SERVER;
 
+#define DEFAULT_BUFFER_SIZE 80 * 1000 * 1024
+
 WS::Connection::Connection() :
         m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false),
         m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this, WS::handleSocketReceive),
         m_socketSendEvent(EV_TYPE_SEND_SOCKET, this, WS::handleSocketSend),
         m_fileReadEvent(EV_TYPE_READ_FILE, this, WS::handleFileReadToSend),
-        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this, WS::handleFileWrite)
+        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this, WS::handleFileWrite),
+        m_reqeustParser(this),
+        m_fileReadStorage(DEFAULT_BUFFER_SIZE),
+        m_fileWriteStorage(DEFAULT_BUFFER_SIZE),
+        m_socketRecvStorage(DEFAULT_BUFFER_SIZE),
+        m_socketSendStorage(DEFAULT_BUFFER_SIZE)
 {
 }
 
@@ -28,11 +35,9 @@ WS::Connection::~Connection()
 
 void WS::Connection::parseRequestFromStorage(struct kevent event)
 {
-  m_request = m_reqHTTPParser.parse(event, m_socketRecvStorage);
+  m_request = m_reqeustParser.parse(event, m_socketRecvStorage);
   if (m_request != nullptr)
-  {
     m_request->response();
-  }
 }
 
 void WS::Connection::setSocketFD(FileDescriptor fd)

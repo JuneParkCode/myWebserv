@@ -7,7 +7,7 @@
 #include <fcntl.h>
 #include <iostream>
 
-#define BUFFER_SIZE (96 * 1024)
+#define BUFFER_SIZE (10 * 1000 * 1024)
 
 extern WS::Server* G_SERVER;
 
@@ -89,14 +89,19 @@ void WS::handleSocketReceive(struct kevent& event)
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
   auto readSize = receiveBuffer.read(event.ident);
+//  static size_t total;
 
   if (readSize == -1)
   {
+    std::cerr << strerror(errno) << std::endl;
     delete (ev->connection);
   }
   else
   {
     // if client closed socket write, response by socket residue + stored data...
+//    total += readSize;
+//    std::cout << "socket received : " << (double)readSize / 1024 << "kb"<< std::endl;
+//    std::cout << "total received : " << (double)total / (1000 * 1024) << "mb"<< std::endl;
     std::function<void()> jobHandler;
     jobHandler = [&connection, event](){
         connection.parseRequestFromStorage(event);
@@ -109,7 +114,7 @@ void WS::handleSocketReceive(struct kevent& event)
 // send data from response send buffer
 void WS::handleSocketSend(struct kevent& event)
 {
-  std::cerr << "send handler\n";
+//  std::cerr << "send handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getSocketSendStorage();
   const size_t bufferCursor = buffer.getCursor();
