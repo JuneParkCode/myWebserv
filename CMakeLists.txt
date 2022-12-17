@@ -18,7 +18,10 @@ set(SOURCE_FILES
         Source/Storage/Storage.cpp
         webserv.cpp
         Source/HTTP/Request.cpp
-        Source/HTTP/RequestParser.cpp)
+        Source/HTTP/Response.cpp
+        Source/HTTP/RequestParser.cpp
+        Source/HTTP/RequestProcessor.cpp
+        Source/HTTP/HTTPDefinitions.cpp)
 
 add_executable(miniWebserv
         ${SOURCE_FILES}
@@ -30,6 +33,7 @@ target_include_directories(miniWebserv
         Source/Server
         Source/ThreadPool
         Source/ARequest
+        Source/AResponse
         Source/Storage
         Source/HTTP
         )
