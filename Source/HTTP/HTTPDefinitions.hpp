@@ -1,6 +1,8 @@
 #ifndef HTTP_DEFINITIONS_HPP
 #define HTTP_DEFINITIONS_HPP
 
+#include <string>
+
 namespace HTTP
 {
     enum StatusCode
@@ -37,6 +39,19 @@ namespace HTTP
         ST_HTTP_VERSION_NOT_SUPPORTED = 505,
         ST_ERROR = -1
     };
+
+    enum AvailableMethods
+    {
+        GET,
+        HEAD,
+        POST,
+        PUT,
+        DELETE,
+        UNKNOWN
+    };
+    const char* AVAILABLE_METHODS[] = {"GET", "HEAD", "POST", "PUT", "DELETE"};
+    AvailableMethods methodStringToEnum(const std::string& method);
+    std::string methodTypeToString(AvailableMethods method);
 }
 
 // FIXME : 이후에 다른 서버 정의 쪽으로 빼는 것이 적절할 것 같다.
