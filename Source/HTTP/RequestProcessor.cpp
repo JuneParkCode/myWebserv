@@ -3,6 +3,7 @@
 //
 
 #include "RequestProcessor.hpp"
+#include <iostream>
 
 HTTP::Response* HTTP::RequestProcessor::createResponse(HTTP::Request* request, WS::Connection* connection)
 {
@@ -39,13 +40,13 @@ HTTP::StatusCode HTTP::RequestProcessor::checkMethod(HTTP::Request* request)
 HTTP::StatusCode HTTP::RequestProcessor::checkHost(HTTP::Request* request)
 {
   // TODO: check Host in serve.
-  return HTTP::ST_SERVICE_UNAVAILABLE;
+  return HTTP::ST_OK;
 }
 
 HTTP::StatusCode HTTP::RequestProcessor::checkPath(HTTP::Request* request)
 {
   // TODO: check path in serve.
-  return HTTP::ST_SERVICE_UNAVAILABLE;
+  return HTTP::ST_OK;
 }
 
 HTTP::StatusCode HTTP::RequestProcessor::checkPayload(HTTP::Request* request, size_t payload)
@@ -86,17 +87,29 @@ HTTP::StatusCode HTTP::RequestProcessor::checkHeader(HTTP::Request* request, WS:
   HTTP::StatusCode status;
 
   if ((status = checkVersion(request)) >= 400)
+  {
     return (status);
+  }
   if ((status = checkMethod(request)) >= 400)
+  {
     return (status);
+  }
   if ((status = checkHost(request)) >= 400)
+  {
     return (status);
+  }
   if ((status = checkPath(request)) >= 400)
+  {
     return (status);
+  }
   if ((status = checkPayload(request, 0)) >= 400)
+  {
     return (status);
+  }
   if ((status = checkNoBodyMethod(request)) >= 400)
+  {
     return (status);
+  }
   return (HTTP::ST_OK);
 }
 

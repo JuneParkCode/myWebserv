@@ -41,6 +41,7 @@ void WS::Connection::parseRequestFromStorage(struct kevent event)
   m_request = httpRequest;
   if (m_request != nullptr)
   {
+    httpRequest->display();
     auto response = HTTP::RequestProcessor::createResponse(httpRequest, this);
     response->send();
   }

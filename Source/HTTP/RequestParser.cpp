@@ -58,6 +58,7 @@ void HTTP::RequestParser::parseHeader(std::istringstream& stream)
   // check request header
   const auto CONTENT_LENGTH = m_processingRequest->getContentLength();
   const auto HEADER_STATUS_CODE = HTTP::RequestProcessor::checkRequest(m_processingRequest, m_connection);
+  std::cerr << "length : " << CONTENT_LENGTH << std::endl;
   if (HEADER_STATUS_CODE >= 400)
   {
     m_processingRequest->setError(HEADER_STATUS_CODE);
@@ -144,7 +145,7 @@ void HTTP::RequestParser::parseCommonBody(WS::Storage& buffer)
   }
   if (CONTENT_LENGTH <= body.size())
     m_parseStatus = REQ_PARSE_END;
-  buffer.pop(buffer.getCursor() + 1);
+  buffer.pop(buffer.getCursor());
 }
 
 void HTTP::RequestParser::parseRequestBody(WS::Storage& buffer)
@@ -196,7 +197,7 @@ HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& buf
 
     init();
     // test 필요...
-    buffer.pop(ret->getBody().size());
+    buffer.pop(buffer.getCursor());
     std::cerr << buffer.size() << std::endl;
     return (ret);
   }

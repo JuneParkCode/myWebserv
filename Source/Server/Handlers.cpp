@@ -84,7 +84,7 @@ void WS::handleEvent(struct kevent& event)
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
-//  std::cerr << "socket receive\n";
+  std::cerr << "socket receive\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
@@ -102,6 +102,8 @@ void WS::handleSocketReceive(struct kevent& event)
 //    total += readSize;
 //    std::cout << "socket received : " << (double)readSize / 1024 << "kb"<< std::endl;
 //    std::cout << "total received : " << (double)total / (1000 * 1024) << "mb"<< std::endl;
+//    std::cout << "total received : " << total << "bytes"<< std::endl;
+//    std::cout << receiveBuffer << std::endl;
     std::function<void()> jobHandler;
     jobHandler = [&connection, event](){
         connection.parseRequestFromStorage(event);

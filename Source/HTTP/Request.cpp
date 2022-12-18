@@ -90,7 +90,7 @@ void HTTP::Request::addHeader(const std::string& key, const std::string& value)
 HTTP::Request::Request() noexcept:
   m_contentLength(0),
   m_isError(false),
-  m_baseTime(time(nullptr)),
+  m_baseTime(clock()),
   m_errorCode(ST_ERROR)
 {
 }
@@ -109,10 +109,10 @@ void HTTP::Request::display() const
 
 double HTTP::Request::getThroughPut() const
 {
-  time_t now = time(nullptr);
+  clock_t now = clock();
   auto runTime = (double)(now - m_baseTime);
 
-  return ((m_body.size() / runTime) / (1000 * 1024)); // by MB
+  return ((m_body.size() / (runTime / CLOCKS_PER_SEC) / (1000 * 1024))); // by MB
 }
 
 bool HTTP::Request::isErrorRequest() const

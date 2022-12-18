@@ -49,7 +49,7 @@ namespace HTTP
         DELETE,
         UNKNOWN
     };
-    const char* AVAILABLE_METHODS[] = {"GET", "HEAD", "POST", "PUT", "DELETE"};
+    static const char* AVAILABLE_METHODS[] = {"GET", "HEAD", "POST", "PUT", "DELETE"};
     AvailableMethods methodStringToEnum(const std::string& method);
     std::string methodTypeToString(AvailableMethods method);
 }

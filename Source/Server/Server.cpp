@@ -97,7 +97,7 @@ WS::Server::Server():
   tmp.clear();
   loc.setAllowCGI(tmp);
   std::vector<Location> locs;
-  m_virtualServers.emplace_back("webserv", "0.0.0.0", "42424", locs);
+  m_virtualServers.emplace_back("webserv", "0.0.0.0", "80", locs);
 }
 
 void WS::Server::attachNewJob(const WS::Job& job)

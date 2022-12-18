@@ -25,7 +25,7 @@ namespace HTTP
       WS::Storage m_body;
       HTTP::Response* m_response;
       size_t m_contentLength;
-      ::time_t m_baseTime;
+      ::clock_t m_baseTime;
       bool m_isError;
   public:
       HTTP::StatusCode m_errorCode;
