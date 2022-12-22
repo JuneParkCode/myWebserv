@@ -141,13 +141,11 @@ void WS::handleSocketSend(struct kevent& event)
       if (ev->connection->m_closed)
       {
         std::cout << PRINT_BLUE + "send done, close connection" + std::to_string(ev->connection->getSocketFd()) << std::endl;
-        delete (ev->connection);
+        shutdown(ev->connection->getSocketFd(), SHUT_RDWR); // gracefully ..?
       }
-      else
-      {
-        G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, &ev->connection->m_socketRecvEvent);
-        ev->connection->setRequest(nullptr);
-      }
+      G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, &ev->connection->m_socketRecvEvent);
+      delete (ev->connection->getRequest());
+      ev->connection->setRequest(nullptr);
     }
     else // partial send...
     {
@@ -162,14 +160,14 @@ void WS::handleFileReadToSend(struct kevent& event)
   std::cerr << "fread handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& readBuffer = ev->connection->getSocketSendStorage();
-  auto readSize = readBuffer.read(event.ident);
+  ssize_t readSize = readBuffer.read(event.ident);
 
   if (readSize == -1)
   {
     std::cerr << PRINT_RED + "read failed\n";
     delete (ev->connection);
   }
-  else if (event.data + readSize >= 0) // read done
+  else if (event.data - readSize <= 0) // read done
   {
     if (::close(ev->connection->getReadFd()) < 0)
       std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
