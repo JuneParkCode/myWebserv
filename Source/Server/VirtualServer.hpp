@@ -6,42 +6,49 @@
 #define VIRTUAL_SERVER_HPP
 
 #include "Event.hpp"
-#include "Location.hpp"
+#include "Router.hpp"
+#include "Request.hpp"
+#include "Response.hpp"
+#include <unordered_map>
 #include <string>
 
-#define BACKLOG 1024
+#define BACKLOG 10240
 
 typedef int FileDescriptor;
 
 namespace WS
 {
+  class Server;
   class VirtualServer
   {
   private:
-    std::string m_serverName;
-    std::string m_listenIP;
-    std::string m_listenPort;
-    std::vector<Location> m_locations;
+    const std::string m_listenIP;
+    const std::string m_listenPort;
+    std::string m_errorPagePath;
+    std::unordered_map<std::string, Router> m_routers; // path;
     Event m_listenEvent;
     FileDescriptor m_serverFD;
+    WS::Server* m_server;
+    size_t m_payloadLimit;
   public:
-    int getServerFd() const;
-    void setServerFd(int mServerFd);
-    Event& getListenEvent();
-    void setListenEvent(const Event& mListenEvent);
-    const std::string& getServerName() const;
-    void setServerName(const std::string& serverName);
-    const std::string& getListenIp() const;
-    void setListenIp(const std::string& listenIp);
-    const std::string& getListenPort() const;
-    void setListenPort(const std::string& listenPort);
-    const std::vector<Location>& getLocations() const;
-    void setLocations(const std::vector<Location>& locations);
+    const std::string m_hostname;
+  private:
+    std::string findPath(const std::string& path) const;
+  public:
     void listen();
-
+    HTTP::StatusCode checkRequestHeader(HTTP::Request* request) const;
+    void setPayloadLimit(size_t limit);
+    void Get(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc);
+    void Post(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc);
+    void Put(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc);
+    void Head(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc);
+    void Delete(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc);
+    void response(HTTP::Request* request, HTTP::Response* response);
+    void setErrorPage(const char* errorPagePath);
+    const char* getErrorPage() const;
   public:
     ~VirtualServer() = default;
-    VirtualServer(std::string  mServerName, std::string  mListenIp, std::string  mListenPort, std::vector<Location>  mLocations);
+    VirtualServer(const std::string& hostname, const std::string& IP, const std::string& port, WS::Server* server);
   };
 }
 

@@ -13,14 +13,15 @@
 
 extern WS::Server* G_SERVER;
 
-#define DEFAULT_BUFFER_SIZE 80 * 1000 * 1024
+#define DEFAULT_BUFFER_SIZE 80 * 1000 * 1000
 
-WS::Connection::Connection() :
+WS::Connection::Connection(WS::VirtualServer* server) :
         m_socketFD(-1), m_readFD(-1), m_writeFD(-1),  m_request(nullptr), m_closed(false),
-        m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this, WS::handleSocketReceive),
-        m_socketSendEvent(EV_TYPE_SEND_SOCKET, this, WS::handleSocketSend),
-        m_fileReadEvent(EV_TYPE_READ_FILE, this, WS::handleFileReadToSend),
-        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this, WS::handleFileWrite),
+        m_socketRecvEvent(EV_TYPE_RECEIVE_SOCKET, this, server, WS::handleSocketReceive),
+        m_socketSendEvent(EV_TYPE_SEND_SOCKET, this, server, WS::handleSocketSend),
+        m_fileReadEvent(EV_TYPE_READ_FILE, this, server, WS::handleFileReadToSend),
+        m_fileWriteEvent(EV_TYPE_WRITE_FILE, this, server, WS::handleFileWrite),
+        m_server(server),
         m_reqeustParser(this),
         m_fileReadStorage(DEFAULT_BUFFER_SIZE),
         m_fileWriteStorage(DEFAULT_BUFFER_SIZE),
@@ -32,18 +33,20 @@ WS::Connection::Connection() :
 WS::Connection::~Connection()
 {
   closeConnection();
+  delete (m_request);
+  m_request = nullptr;
 }
 
 // FIXME : 현재는 HTTP만 받지만 다른 프로토콜도 받을 수 있게 만들어보자.
 void WS::Connection::parseRequestFromStorage(struct kevent event)
 {
-  auto* httpRequest = m_reqeustParser.parse(event, m_socketRecvStorage);
-  m_request = httpRequest;
-  if (m_request != nullptr)
+  auto* request = m_reqeustParser.parse(event, m_socketRecvStorage);
+  if (request != nullptr)
   {
-    httpRequest->display();
-    auto response = HTTP::RequestProcessor::createResponse(httpRequest, this);
-    response->send();
+    m_request = request;
+    auto* response = HTTP::RequestProcessor::createResponse(request, this);
+    request->setResponse(response);
+    m_server->response(request, response);
   }
 }
 
@@ -54,31 +57,34 @@ void WS::Connection::setSocketFD(FileDescriptor fd)
 
 void WS::Connection::closeConnection()
 {
-  if (!m_closed)
+  if (m_socketFD > 0)
   {
-    m_closed = true;
-    if (m_socketFD > 0)
-    {
-      ::close(m_socketFD);
-      m_socketFD = -1;
-    }
-    if (m_readFD > 0)
-    {
-      ::close(m_readFD);
-      m_readFD = -1;
-    }
-    if (m_writeFD > 0)
-    {
-      ::close(m_writeFD);
-      m_writeFD = -1;
-    }
-    delete (m_request);
-    m_request = nullptr;
-    std::cerr << "Disconnect : " << getClientIP() << std::endl;
+    ::shutdown(m_socketFD, SHUT_RDWR);
+    if (::close(m_socketFD) < 0)
+      std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
+    m_socketFD = -1;
   }
+  if (m_readFD > 0)
+  {
+    if (::close(m_readFD) < 0)
+      std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
+    m_readFD = -1;
+  }
+  if (m_writeFD > 0)
+  {
+    if (::close(m_writeFD) < 0)
+      std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
+    m_writeFD = -1;
+  }
+  std::cerr << PRINT_RESET +  "Disconnect : " +  getClientIP() << std::endl;
 }
 
-WS::ARequest* WS::Connection::getRequest()
+WS::VirtualServer& WS::Connection::getServer()
+{
+  return (*m_server);
+}
+
+HTTP::Request* WS::Connection::getRequest()
 {
   return (m_request);
 }
@@ -142,4 +148,9 @@ FileDescriptor WS::Connection::getWriteFd() const
 void WS::Connection::setWriteFd(FileDescriptor writeFd)
 {
   m_writeFD = writeFd;
+}
+
+void WS::Connection::setRequest(HTTP::Request* request)
+{
+  m_request = request;
 }

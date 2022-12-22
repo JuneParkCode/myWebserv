@@ -18,20 +18,22 @@
 
 namespace WS
 {
+  class VirtualServer;
   // connection must be deleted after closeConnection()
   class Connection
   {
   private:
+      WS::VirtualServer* m_server;
       FileDescriptor m_socketFD;
       FileDescriptor m_readFD;
       FileDescriptor m_writeFD;
-      WS::ARequest* m_request; // current processing request
+      HTTP::Request* m_request; // current processing request
       WS::Storage m_socketRecvStorage;
       WS::Storage m_socketSendStorage;
       WS::Storage m_fileReadStorage;
       WS::Storage m_fileWriteStorage;
-      bool m_closed;
   public:
+      bool m_closed;
       struct sockaddr_in m_socketIn{};
       HTTP::RequestParser m_reqeustParser;
       Event m_socketRecvEvent;
@@ -42,7 +44,9 @@ namespace WS
       void parseRequestFromStorage(struct kevent event);
       void setSocketFD(FileDescriptor fd);
       void closeConnection();
-      ARequest* getRequest();
+      HTTP::Request* getRequest();
+      void setRequest(HTTP::Request* request);
+      WS::VirtualServer& getServer();
       WS::Storage& getSocketReceiveStorage();
       WS::Storage& getSocketSendStorage();
       WS::Storage& getFileReadStorage();
@@ -54,7 +58,7 @@ namespace WS
       void setReadFd(FileDescriptor readFd);
       FileDescriptor getWriteFd() const;
       void setWriteFd(FileDescriptor writeFd);
-      Connection();
+      explicit Connection(WS::VirtualServer* server);
       ~Connection();
   };
 }

@@ -3,13 +3,10 @@
 //
 
 #include "RequestParser.hpp"
-#include "Server.hpp"
 #include "RequestProcessor.hpp"
 #include "Connection.hpp"
 #include <sstream>
 #include <iostream>
-
-extern WS::Server* G_SERVER;
 
 void HTTP::RequestParser::parseRequestHead(WS::Storage& buffer)
 {
@@ -58,7 +55,6 @@ void HTTP::RequestParser::parseHeader(std::istringstream& stream)
   // check request header
   const auto CONTENT_LENGTH = m_processingRequest->getContentLength();
   const auto HEADER_STATUS_CODE = HTTP::RequestProcessor::checkRequest(m_processingRequest, m_connection);
-  std::cerr << "length : " << CONTENT_LENGTH << std::endl;
   if (HEADER_STATUS_CODE >= 400)
   {
     m_processingRequest->setError(HEADER_STATUS_CODE);
@@ -117,7 +113,8 @@ void HTTP::RequestParser::parseChunkedBody(WS::Storage& buffer)
       parseChunkedBody(buffer);
   }
   // check payload
-  auto requestStatus = HTTP::RequestProcessor::checkPayload(nullptr, body.size());
+  m_processingRequest->setContentLength(body.size());
+  auto requestStatus = HTTP::RequestProcessor::checkRequest(m_processingRequest, m_connection);
   if (requestStatus >= 400)
   {
     m_processingRequest->setError(requestStatus);
@@ -154,6 +151,8 @@ void HTTP::RequestParser::parseRequestBody(WS::Storage& buffer)
     parseChunkedBody(buffer);
   else if (m_processingRequest->getContentLength() > 0)
     parseCommonBody(buffer);
+  else
+    m_parseStatus = REQ_PARSE_END;
 }
 
 // stream 을 사용할 경우, 이를 복사하는데 분명히 시간이 들어간다. body는 buffer를 이용하자.
@@ -198,7 +197,6 @@ HTTP::Request* HTTP::RequestParser::parse(struct kevent& event, WS::Storage& buf
     init();
     // test 필요...
     buffer.pop(buffer.getCursor());
-    std::cerr << buffer.size() << std::endl;
     return (ret);
   }
   // parse not ended...

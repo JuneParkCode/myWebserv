@@ -3,6 +3,7 @@
 //
 
 #include "Request.hpp"
+#include "Response.hpp"
 
 WS::Storage& HTTP::Request::getBody()
 {
@@ -68,7 +69,7 @@ void HTTP::Request::setRequestLine(const std::string& method, const std::string&
 
 void HTTP::Request::response()
 {
-  display(); // for test
+
 }
 
 bool HTTP::Request::isChunked() const
@@ -84,7 +85,7 @@ void HTTP::Request::addHeader(const std::string& key, const std::string& value)
 {
   auto pair = std::pair<std::string, std::string>(key, value);
 
-  m_headers.insert(pair);
+  m_headers[key] = value;
 }
 
 HTTP::Request::Request() noexcept:
@@ -112,10 +113,20 @@ double HTTP::Request::getThroughPut() const
   clock_t now = clock();
   auto runTime = (double)(now - m_baseTime);
 
-  return ((m_body.size() / (runTime / CLOCKS_PER_SEC) / (1000 * 1024))); // by MB
+  return ((m_body.size() / (runTime / CLOCKS_PER_SEC) / (1000 * 1000))); // by MB
 }
 
 bool HTTP::Request::isErrorRequest() const
 {
   return (m_isError);
+}
+
+void HTTP::Request::setResponse(HTTP::Response* response)
+{
+  m_response = response;
+}
+
+HTTP::Request::~Request()
+{
+  delete (m_response);
 }

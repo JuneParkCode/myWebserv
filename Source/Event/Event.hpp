@@ -12,6 +12,7 @@
 namespace WS
 {
     class Connection;
+    class VirtualServer;
     enum EventType
     {
         EV_TYPE_READ_FILE,
@@ -24,9 +25,10 @@ namespace WS
     {
         EventType type;
         WS::Connection* connection;
+        WS::VirtualServer* server;
         std::function<void(struct kevent&)> handler;
         Event() = default;
-        Event(EventType type_, Connection* connection_, std::function<void(struct kevent&)> handler_);
+        Event(EventType type_, Connection* connection_, VirtualServer* server_, std::function<void(struct kevent&)> handler_);
     } Event;
 }
 

@@ -6,12 +6,11 @@
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <iostream>
+#include <signal.h>
 
-#define BUFFER_SIZE (10 * 1000 * 1024)
+#define BUFFER_SIZE (10 * 1000 * 1000)
 
 extern WS::Server* G_SERVER;
-
-// 같은 connection에서는 call이 작업에 순차적으로 발생하기 때문에 connection을 delete 하기만 하면 이후에 같은 connection에 대해서 작업을 하지 않음.
 
 void WS::handleEvent(struct kevent& event)
 {
@@ -19,11 +18,10 @@ void WS::handleEvent(struct kevent& event)
 
   if (event.flags & EV_ERROR) // EV_ERROR -> disconnect connection...
   {
-    std::cerr << "EV_ERR\n";
-    delete (ev->connection);
+    std::cerr << PRINT_RED + "EV_ERR\n";
+//    delete (ev->connection);
     return ;
   }
-
   switch (ev->type)
   {
     case EV_TYPE_READ_FILE:
@@ -33,7 +31,8 @@ void WS::handleEvent(struct kevent& event)
         FileDescriptor readFD = ev->connection->getReadFd();
         if (readFD > 0)
         {
-          close(readFD);
+          if (::close(readFD) < 0)
+            std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
           ev->connection->setReadFd(-1);
         }
         return ;
@@ -47,7 +46,8 @@ void WS::handleEvent(struct kevent& event)
         FileDescriptor writeFD = ev->connection->getWriteFd();
         if (writeFD > 0)
         {
-          close(writeFD);
+          if (::close(writeFD) < 0)
+            std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
           ev->connection->setWriteFd(-1);
         }
         return ;
@@ -58,7 +58,10 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF)  // client closed own write socket -> still can response
       {
+        std::cout << PRINT_YELLOW +  "SHUTDOWN SOCK RECV\n";
         ::shutdown(event.ident, SHUT_RD);
+        ev->connection->m_closed = true;
+        G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, &ev->connection->m_socketSendEvent);
         return ;
       }
     }
@@ -66,6 +69,7 @@ void WS::handleEvent(struct kevent& event)
     {
       if (event.flags & EV_EOF) // client closed own read socket -> can not response
       {
+        std::cerr  << PRINT_RED + "CLOSE SOCK WRITE\n";
         delete (ev->connection);
         return ;
       }
@@ -74,7 +78,7 @@ void WS::handleEvent(struct kevent& event)
     case EV_TYPE_ACCEPT_CONNECTION:
     {
       handleAcceptConnection(event);
-      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD | EV_ENABLE, event.fflags, event.udata);
+      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD, event.fflags, event.udata);
       return ;
     }
   }
@@ -84,32 +88,32 @@ void WS::handleEvent(struct kevent& event)
 // receive data from socket and store at connection buffer
 void WS::handleSocketReceive(struct kevent& event)
 {
-  std::cerr << "socket receive\n";
+//  std::cerr << "socket receive\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& connection = *ev->connection;
+  if (connection.getRequest() != nullptr)
+    return ;
   auto& receiveBuffer = connection.getSocketReceiveStorage();
   auto readSize = receiveBuffer.read(event.ident);
-//  static size_t total;
 
   if (readSize == -1)
   {
-    std::cerr << strerror(errno) << std::endl;
-    delete (ev->connection);
+    std::cerr << PRINT_RED + "recv failed\n";
+//    delete (ev->connection);
   }
   else
   {
-    // if client closed socket write, response by socket residue + stored data...
-//    total += readSize;
-//    std::cout << "socket received : " << (double)readSize / 1024 << "kb"<< std::endl;
-//    std::cout << "total received : " << (double)total / (1000 * 1024) << "mb"<< std::endl;
-//    std::cout << "total received : " << total << "bytes"<< std::endl;
-//    std::cout << receiveBuffer << std::endl;
-    std::function<void()> jobHandler;
-    jobHandler = [&connection, event](){
-        connection.parseRequestFromStorage(event);
-    };
-    WS::Job job(jobHandler);
-    G_SERVER->attachNewJob(job);
+//    if (THREAD_MODE)
+//    {
+//      std::function<void()> jobHandler;
+//      jobHandler = [&connection, event](){
+//          connection.parseRequestFromStorage(event);
+//      };
+//      WS::Job job(jobHandler);
+////      G_SERVER->attachNewJob(job);
+//    }
+//    else
+      connection.parseRequestFromStorage(event);
   }
 }
 
@@ -117,6 +121,7 @@ void WS::handleSocketReceive(struct kevent& event)
 void WS::handleSocketSend(struct kevent& event)
 {
 //  std::cerr << "send handler\n";
+  signal(SIGPIPE, SIG_IGN);
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getSocketSendStorage();
   const size_t bufferCursor = buffer.getCursor();
@@ -125,30 +130,29 @@ void WS::handleSocketSend(struct kevent& event)
   auto sendSize = ::send((FileDescriptor)event.ident, &buffer.data()[bufferCursor], BUF_SIZE, MSG_DONTWAIT);
   if (sendSize == -1)
   {
-    delete (ev->connection);
+    std::cerr << PRINT_RED + "send failed\n";
+//    delete (ev->connection);
   }
   else
   {
     if (buffer.size() <= bufferCursor + sendSize) // buffer send done
     {
       buffer.clear();
-      // check if response is done -> readFileFD == -1  (no more read file and no more send..)
-      if (ev->connection->getReadFd() < 0)
+      if (ev->connection->m_closed)
       {
-        // enable socket recv
-        G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD, event.fflags, &ev->connection->m_socketRecvEvent);
+        std::cout << PRINT_BLUE + "send done, close connection" + std::to_string(ev->connection->getSocketFd()) << std::endl;
+        delete (ev->connection);
       }
       else
       {
-        // read more..
-        G_SERVER->attachEvent(ev->connection->getReadFd(), EVFILT_READ, EV_ADD, event.fflags, &ev->connection->m_fileReadEvent);
+        G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_READ, EV_ADD | EV_ENABLE, 0, &ev->connection->m_socketRecvEvent);
+        ev->connection->setRequest(nullptr);
       }
     }
     else // partial send...
     {
       buffer.setCursor(bufferCursor + sendSize);
-      // send more..
-      G_SERVER->attachEvent(event.ident, event.filter, EV_ADD, event.fflags, &ev->connection->m_socketSendEvent);
+      G_SERVER->attachEvent(event.ident, EVFILT_WRITE, EV_ADD | EV_ENABLE, event.fflags, &ev->connection->m_socketSendEvent);
     }
   }
 }
@@ -157,28 +161,32 @@ void WS::handleFileReadToSend(struct kevent& event)
 {
   std::cerr << "fread handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
-  auto& readBuffer = ev->connection->getFileReadStorage();
-
+  auto& readBuffer = ev->connection->getSocketSendStorage();
   auto readSize = readBuffer.read(event.ident);
+
   if (readSize == -1)
   {
+    std::cerr << PRINT_RED + "read failed\n";
     delete (ev->connection);
   }
-  else if (readSize == 0 || readSize < BUFFER_SIZE) // read done
+  else if (event.data + readSize >= 0) // read done
   {
-    close(ev->connection->getReadFd());
+    if (::close(ev->connection->getReadFd()) < 0)
+      std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
     ev->connection->setReadFd(-1);
+    G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_WRITE,  EV_ADD | EV_ENABLE, 0, &ev->connection->m_socketSendEvent);
   }
-
-  if (readSize > 0) // send it!
+  else
   {
-    G_SERVER->attachEvent(ev->connection->getSocketFd(), EVFILT_WRITE, EV_ADD, 0, &ev->connection->m_socketSendEvent);
+    // read  again.
+    std::cerr << "read again\n";
+    G_SERVER->attachEvent(event.ident, EVFILT_READ, EV_ADD | EV_ENABLE, 0, event.udata);
   }
 }
 
 void WS::handleFileWrite(struct kevent& event)
 {
-  std::cerr << "write handler\n";
+//  std::cerr << "write handler\n";
   auto ev = reinterpret_cast<Event*>(event.udata);
   auto& buffer = ev->connection->getFileWriteStorage();
   const size_t bufferCursor = buffer.getCursor();
@@ -187,6 +195,7 @@ void WS::handleFileWrite(struct kevent& event)
   auto writeSize = ::write((FileDescriptor)event.ident, &buffer.data()[bufferCursor], BUF_SIZE);
   if (writeSize == -1)
   {
+    std::cerr << PRINT_RED + "write failed\n";
     delete (ev->connection);
   }
   else
@@ -194,7 +203,8 @@ void WS::handleFileWrite(struct kevent& event)
     if (buffer.size() <= bufferCursor + writeSize) // write buffer to file done
     {
       buffer.clear();
-      close(ev->connection->getWriteFd());
+      if (::close(ev->connection->getWriteFd()) < 0)
+        std::cout << PRINT_RED + "CLOSE ERR" << std::endl;
       ev->connection->setWriteFd(-1);
     }
     else // partial write...
@@ -214,13 +224,14 @@ void WS::handleAcceptConnection(struct kevent& event)
 
   if (newSocket < 0)
   {
-    std::cerr << "accept failed : " << ::strerror(errno) << std::endl;
+    std::cerr << PRINT_RED + "accept failed : " << ::strerror(errno) << std::endl;
     std::cerr << "socket fd : " << event.ident << std::endl;
     return ;
   }
   else
   {
-    auto newConnection = new WS::Connection();
+    auto* ev = reinterpret_cast<Event*>(event.udata);
+    auto newConnection = new WS::Connection(ev->server);
 
     newConnection->setSocketFD(newSocket);
     newConnection->m_socketIn = sockIn;
@@ -234,7 +245,7 @@ void WS::handleAcceptConnection(struct kevent& event)
     {
       throw (std::runtime_error("Socket opt failed\n"));
     }
-    std::cout << "Connect : " << newConnection->getClientIP() << std::endl;
+    std::cout << PRINT_GREEN + "Connect : " << newConnection->getClientIP() + "  BACKLOG : " + std::to_string(event.data) + " FD : " + std::to_string(newSocket) << std::endl;
     G_SERVER->attachEvent(newSocket, EVFILT_READ, EV_ADD, 0, &newConnection->m_socketRecvEvent);
   }
 }

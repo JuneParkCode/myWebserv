@@ -43,11 +43,12 @@ namespace HTTP
       bool isErrorRequest() const;
       void setRequestLine(const std::string& method, const std::string& path, const std::string& version);
       void response() override;
+      void setResponse(HTTP::Response* response);
       bool isChunked() const;
       void addHeader(const std::string& key, const std::string& value);
       double getThroughPut() const;
       Request() noexcept;
-      ~Request() = default;
+      ~Request();
   };
 }
 

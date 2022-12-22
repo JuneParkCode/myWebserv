@@ -11,7 +11,7 @@ set(SOURCE_FILES
         Source/Event/Event.cpp
         Source/Server/Connection.cpp
         Source/Server/Handlers.cpp
-        Source/Server/Location.cpp
+        Source/Server/Router.cpp
         Source/Server/Server.cpp
         Source/Server/VirtualServer.cpp
         Source/ThreadPool/ThreadPool.cpp

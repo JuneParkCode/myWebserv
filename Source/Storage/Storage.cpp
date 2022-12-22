@@ -298,14 +298,13 @@ void WS::Storage::pop(size_t len)
     m_cursor -= len;
   }
 }
-#include <iostream>
+
 void WS::Storage::reserve(size_t size)
 {
   if (m_storageSize >= size || size == 0)
     return ;
   else
   {
-    std::cout << "reserve malloced memory\n" << (double ) m_storageSize / (1000 * 1024) << " + " << size  / (1000 * 1024) << std::endl;
     auto newStorage = new WS::Byte[size];
     size_t temp = m_storedSize;
 

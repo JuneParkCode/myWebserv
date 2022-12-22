@@ -3,6 +3,7 @@
 //
 
 #include "ThreadPool.hpp"
+#include "Server.hpp"
 #include "Handlers.hpp"
 
 void WS::ThreadPool::enqueueIOJob(const struct kevent& ev)
@@ -37,17 +38,20 @@ WS::ThreadPool::~ThreadPool()
 WS::ThreadPool::ThreadPool(const size_t numThreads) :
         NUM_THREADS(numThreads), stop(false)
 {
-  const size_t NUM_IO_THREADS = NUM_THREADS / 2;
-  const size_t NUM_NORMAL_THREADS = NUM_THREADS - NUM_IO_THREADS;
+  if (THREAD_MODE)
+  {
+//    const size_t NUM_NORMAL_THREADS = NUM_THREADS / 3;
+    const size_t NUM_IO_THREADS = numThreads; // - NUM_NORMAL_THREADS;
 
-  m_threads.reserve(NUM_THREADS);
-  for (size_t i = 0; i < NUM_IO_THREADS; ++i)
-  {
-    m_threads.emplace_back([this](){this->workIOJob();});
-  }
-  for (size_t i = 0; i < NUM_NORMAL_THREADS; ++i)
-  {
-    m_threads.emplace_back([this](){this->workNormalJob();});
+    m_threads.reserve(NUM_THREADS);
+    for (size_t i = 0; i < NUM_IO_THREADS; ++i)
+    {
+      m_threads.emplace_back([this](){this->workIOJob();});
+    }
+//    for (size_t i = 0; i < NUM_NORMAL_THREADS; ++i)
+//    {
+//      m_threads.emplace_back([this](){this->workNormalJob();});
+//    }
   }
 }
 

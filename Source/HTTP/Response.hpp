@@ -29,6 +29,8 @@ namespace HTTP
       const std::string& getStatusMesseage() const;
       const std::unordered_map<std::string, std::string>& getHeader() const;
       void send() override; // using socketSendBuffer in connection...
+      void sendFile(const char* path);
+      std::string toString() const;
       Response(HTTP::Request* request, WS::Connection* connection);
       ~Response() override = default;
   };

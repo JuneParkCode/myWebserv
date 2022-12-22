@@ -3,62 +3,22 @@
 //
 
 #include "VirtualServer.hpp"
+#include "Server.hpp"
+#include "Handlers.hpp"
 #include <utility>
 #include <sys/socket.h>
 #include <fcntl.h>
-#include <arpa//inet.h>
+#include <arpa/inet.h>
+#include <unordered_map>
 
-// 이번에 새로 배운 형식
-// 이렇게 작성하면 copy 가 여러번 일어날 수 있는 문제를 해결할 수 있다.
-// 그런데, string 이 짧아서 실질적으로 효용은 없을 것 같다.
-WS::VirtualServer::VirtualServer(std::string  mServerName, std::string  mListenIp, std::string  mListenPort,
-                                 std::vector<Location>  mLocations) :
-        m_serverName(std::move(mServerName)),
-        m_listenIP(std::move(mListenIp)),
-        m_listenPort(std::move(mListenPort)),
-        m_locations(std::move(mLocations))
+WS::VirtualServer:: VirtualServer(const std::string& hostname, const std::string& IP, const std::string& port, WS::Server* server):
+  m_hostname(hostname),
+  m_listenIP(IP),
+  m_listenPort(port),
+  m_serverFD(-1),
+  m_server(server),
+  m_payloadLimit(SIZE_T_MAX) // NO_LIMIT
 {
-}
-
-
-const std::string& WS::VirtualServer::getServerName() const
-{
-  return m_serverName;
-}
-
-void WS::VirtualServer::setServerName(const std::string& serverName)
-{
-  m_serverName = serverName;
-}
-
-const std::string& WS::VirtualServer::getListenIp() const
-{
-  return m_listenIP;
-}
-
-void WS::VirtualServer::setListenIp(const std::string& listenIp)
-{
-  m_listenIP = listenIp;
-}
-
-const std::string& WS::VirtualServer::getListenPort() const
-{
-  return m_listenPort;
-}
-
-void WS::VirtualServer::setListenPort(const std::string& listenPort)
-{
-  VirtualServer::m_listenPort = listenPort;
-}
-
-const std::vector<WS::Location>& WS::VirtualServer::getLocations() const
-{
-  return m_locations;
-}
-
-void WS::VirtualServer::setLocations(const std::vector<Location>& locations)
-{
-  VirtualServer::m_locations = locations;
 }
 
 static struct sockaddr_in setSocketAddr(const std::string& IP, const std::string& PORT)
@@ -96,24 +56,125 @@ void WS::VirtualServer::listen()
   {
     throw (std::runtime_error("Listen Socket failed\n"));
   }
+  m_listenEvent = Event(EV_TYPE_ACCEPT_CONNECTION, nullptr, this, WS::handleAcceptConnection);
+  m_server->attachEvent(m_serverFD, EVFILT_READ, EV_ADD | EV_CLEAR , 0, &m_listenEvent);
 }
 
-WS::Event& WS::VirtualServer::getListenEvent()
+HTTP::StatusCode WS::VirtualServer::checkRequestHeader(HTTP::Request* request) const
 {
-  return (m_listenEvent);
+  auto& headers = request->getHeaders();
+  const auto requestPath = findPath(request->getPath());
+  if (requestPath.empty())
+    return (HTTP::ST_NOT_FOUND);
+  const auto& router = m_routers.at(requestPath);
+
+  if (!(router.isAllowedMethod(request->getMethod())))
+    return (HTTP::ST_METHOD_NOT_ALLOWED);
+  if (m_payloadLimit < request->getContentLength())
+    return (HTTP::ST_PAYLOAD_TOO_LARGE);
+  return (HTTP::ST_OK);
 }
 
-void WS::VirtualServer::setListenEvent(const WS::Event& mListenEvent)
+std::string WS::VirtualServer::findPath(const std::string& path) const
 {
-  m_listenEvent = mListenEvent;
+  std::string router = path;
+  auto it = m_routers.begin();
+
+  while ((it = m_routers.find(router)) == m_routers.end() && !router.empty())
+  {
+    router = router.substr(0, router.rfind('/'));
+  }
+  if (router.empty())
+    return ("");
+  return (it->first);
 }
 
-int WS::VirtualServer::getServerFd() const
+void WS::VirtualServer::setPayloadLimit(size_t limit)
 {
-  return m_serverFD;
+  m_payloadLimit = limit;
 }
 
-void WS::VirtualServer::setServerFd(int mServerFd)
+void WS::VirtualServer::Get(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc)
 {
-  m_serverFD = mServerFd;
+  auto it = m_routers.find(path);
+  if (it == m_routers.end())
+  {
+    m_routers.insert(std::pair<std::string, WS::Router>(path, WS::Router(path)));
+    it = m_routers.find(path);
+  }
+  auto& router = it->second;
+  router.addMethodProc("GET", proc);
+}
+
+void WS::VirtualServer::Post(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc)
+{
+  auto it = m_routers.find(path);
+  if (it == m_routers.end())
+  {
+    m_routers.insert(std::pair<std::string, WS::Router>(path, WS::Router(path)));
+    it = m_routers.find(path);
+  }
+  auto& router = it->second;
+  router.addMethodProc("POST", proc);
+}
+
+void WS::VirtualServer::Put(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc)
+{
+  auto it = m_routers.find(path);
+  if (it == m_routers.end())
+  {
+    m_routers.insert(std::pair<std::string, WS::Router>(path, WS::Router(path)));
+    it = m_routers.find(path);
+  }
+  auto& router = it->second;
+  router.addMethodProc("PUT", proc);
+}
+
+void WS::VirtualServer::Head(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc)
+{
+  auto it = m_routers.find(path);
+  if (it == m_routers.end())
+  {
+    m_routers.insert(std::pair<std::string, WS::Router>(path, WS::Router(path)));
+    it = m_routers.find(path);
+  }
+  auto& router = it->second;
+  router.addMethodProc("HEAD", proc);
+}
+
+void WS::VirtualServer::Delete(const std::string& path, std::function<void(HTTP::Request*, HTTP::Response*)> proc)
+{
+  auto it = m_routers.find(path);
+  if (it == m_routers.end())
+  {
+    m_routers.insert(std::pair<std::string, WS::Router>(path, WS::Router(path)));
+    it = m_routers.find(path);
+  }
+  auto& router = it->second;
+  router.addMethodProc("DELETE", proc);
+}
+
+void WS::VirtualServer::response(HTTP::Request* request, HTTP::Response* response)
+{
+  auto path = findPath(request->getPath());
+  if (path.empty())
+  {
+    response->sendFile(m_errorPagePath.c_str());
+  }
+  else
+  {
+    auto& router = m_routers.at(path);
+    auto proc = router.getMethodProc(request->getMethod());
+    proc(request, response);
+  }
+}
+
+void WS::VirtualServer::setErrorPage(const char* errorPagePath)
+{
+  m_errorPagePath = errorPagePath;
+}
+
+const char* WS::VirtualServer::getErrorPage() const
+{
+  return (m_errorPagePath.c_str());
 }

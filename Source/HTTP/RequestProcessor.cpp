@@ -10,57 +10,20 @@ HTTP::Response* HTTP::RequestProcessor::createResponse(HTTP::Request* request, W
   auto response = new HTTP::Response(request, connection);
   auto status = checkRequest(request, connection);
 
-  if (status < 400) // response is set.
-    status = setResponseByMethod(response, request, connection);
   setResponseLine(response, status);
-  return (response);
-}
-
-
-HTTP::StatusCode HTTP::RequestProcessor::checkVersion(HTTP::Request* request)
-{
-  auto& version = request->getVersion();
-
-  if (version != "HTTP/1.1" || version == "HTTP/0.9") // check version
-    return (HTTP::ST_BAD_REQUEST);
-  return (HTTP::ST_OK);
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::checkMethod(HTTP::Request* request)
-{
-  auto& method = request->getMethod();
-  auto methodEnum = HTTP::methodStringToEnum(method);
-
-  if (methodEnum == UNKNOWN)
-    return (HTTP::ST_METHOD_NOT_ALLOWED);
-  // TODO:check server and method is allowed
-  return (HTTP::ST_OK);
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::checkHost(HTTP::Request* request)
-{
-  // TODO: check Host in serve.
-  return HTTP::ST_OK;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::checkPath(HTTP::Request* request)
-{
-  // TODO: check path in serve.
-  return HTTP::ST_OK;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::checkPayload(HTTP::Request* request, size_t payload)
-{
-  size_t contentLength;
-
-  if (request != nullptr)
-    contentLength = request->getContentLength();
-  else if (payload != 0)
-    contentLength = payload;
+  // FIXME: set connection
+  auto& headers = request->getHeaders();
+  auto connection_header = headers.find("Connection");
+  if (connection_header == headers.end() || connection_header->second == "close")
+  {
+    connection->m_closed = true;
+    response->setHeader("Connection", "close");
+  }
   else
-    contentLength = 0;
-  // TODO: check server max payload
-  return (HTTP::ST_OK);
+  {
+    response->setHeader("Connection", "keep-alive");
+  }
+  return (response);
 }
 
 HTTP::StatusCode HTTP::RequestProcessor::checkNoBodyMethod(HTTP::Request* request)
@@ -82,67 +45,25 @@ HTTP::StatusCode HTTP::RequestProcessor::checkError(HTTP::Request* request)
   return (HTTP::StatusCode::ST_OK);
 }
 
-HTTP::StatusCode HTTP::RequestProcessor::checkHeader(HTTP::Request* request, WS::Connection* connection)
+HTTP::StatusCode HTTP::RequestProcessor::checkHeader(HTTP::Request* request, WS::VirtualServer& server)
 {
   HTTP::StatusCode status;
 
-  if ((status = checkVersion(request)) >= 400)
-  {
-    return (status);
-  }
-  if ((status = checkMethod(request)) >= 400)
-  {
-    return (status);
-  }
-  if ((status = checkHost(request)) >= 400)
-  {
-    return (status);
-  }
-  if ((status = checkPath(request)) >= 400)
-  {
-    return (status);
-  }
-  if ((status = checkPayload(request, 0)) >= 400)
-  {
-    return (status);
-  }
   if ((status = checkNoBodyMethod(request)) >= 400)
-  {
     return (status);
-  }
-  return (HTTP::ST_OK);
+  return (server.checkRequestHeader(request));
 }
 
 HTTP::StatusCode HTTP::RequestProcessor::checkRequest(HTTP::Request* request, WS::Connection* connection)
 {
   HTTP::StatusCode statusCode;
+  auto& server = connection->getServer();
 
-  if ((statusCode = checkError(request)) == HTTP::StatusCode::ST_BAD_REQUEST)
+  if ((statusCode = checkError(request)) >= 400)
     return (statusCode);
-  if ((statusCode = checkHeader(request, connection)) >= 400)
+  if ((statusCode = checkHeader(request, server)) >= 400)
     return (statusCode);
   return (statusCode);
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::setResponseByMethod(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  auto method = HTTP::methodStringToEnum(request->getMethod());
-
-  switch (method)
-  {
-    case (HTTP::AvailableMethods::GET):
-      return (processGET(response, request, connection));
-    case (HTTP::AvailableMethods::HEAD):
-      return (processHEAD(response, request, connection));
-    case (HTTP::AvailableMethods::POST):
-      return (processPOST(response, request, connection));
-    case (HTTP::AvailableMethods::PUT):
-      return (processPUT(response, request, connection));
-    case (HTTP::AvailableMethods::DELETE):
-      return (processDELETE(response, request, connection));
-    case (HTTP::AvailableMethods::UNKNOWN):
-      return (HTTP::StatusCode::ST_METHOD_NOT_ALLOWED);
-  }
 }
 
 void HTTP::RequestProcessor::setResponseLine(HTTP::Response* response, HTTP::StatusCode statusCode)
@@ -305,35 +226,4 @@ void HTTP::RequestProcessor::setResponseLine(HTTP::Response* response, HTTP::Sta
       break;
     }
   }
-}
-
-// TODO: below functions must be check CGI before process request
-HTTP::StatusCode HTTP::RequestProcessor::processGET(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  // TODO: get location from server and set fd
-  return HTTP::ST_SERVICE_UNAVAILABLE;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::processHEAD(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  // TODO: get location from server and check request path is exist
-  return HTTP::ST_SERVICE_UNAVAILABLE;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::processPOST(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  // TODO: get location from server and set file fd (write, append)
-  return HTTP::ST_SERVICE_UNAVAILABLE;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::processPUT(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  // TODO: get location from server and set file fd (write, trunc)
-  return HTTP::ST_SERVICE_UNAVAILABLE;
-}
-
-HTTP::StatusCode HTTP::RequestProcessor::processDELETE(HTTP::Response* response, HTTP::Request* request, WS::Connection* connection)
-{
-  // TODO: get location from server and unlink file
-  return HTTP::ST_SERVICE_UNAVAILABLE;
 }
